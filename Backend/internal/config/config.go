@@ -1,6 +1,3 @@
-// Package config loads application configuration from environment variables.
-// A .env file is loaded automatically when present (development convenience);
-// in production, the variables should be set in the host environment directly.
 package config
 
 import (
@@ -13,26 +10,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds all runtime configuration for the application.
 type Config struct {
-	// Server
-	Port string // HTTP listen port; default "3000"
-
-	// Database
-	DatabaseURL string // PostgreSQL DSN; required
-
-	// API-Football (used by the sync command and sync endpoint)
-	APIFootballKey     string // FOOTBALL_API_KEY; warn on empty
-	APIFootballBaseURL string // FOOTBALL_API_BASE_URL; default is the v3 endpoint
-	Season             int    // FOOTBALL_SEASON; 0 means not set
+	Port               string
+	DatabaseURL        string
+	APIFootballKey     string
+	APIFootballBaseURL string
+	Season             int
 }
 
-// Load reads configuration from the environment (and .env if present).
-// Returns an error only for truly unrecoverable problems (missing DATABASE_URL
-// or malformed FOOTBALL_SEASON). A missing API key is logged as a warning
-// because the HTTP server can still serve cached database data without it.
 func Load() (*Config, error) {
-	// Load .env silently; on a real server the file won't exist and that is fine.
 	_ = godotenv.Load()
 
 	cfg := &Config{
@@ -47,7 +33,7 @@ func Load() (*Config, error) {
 	}
 
 	if cfg.APIFootballKey == "" {
-		log.Println("warning: FOOTBALL_API_KEY is not set; sync endpoints will fail")
+		log.Println("warning: FOOTBALL_API_KEY is not set")
 	}
 
 	if s := os.Getenv("FOOTBALL_SEASON"); s != "" {
@@ -61,7 +47,6 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// getenv returns the value of key, or fallback when the variable is unset or empty.
 func getenv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

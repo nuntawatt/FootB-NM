@@ -12,27 +12,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// availableSeasons is the list of seasons the application tracks.
-// A "season" refers to the year the competition starts (e.g. 2024 = 2024/25).
 var availableSeasons = []int{2022, 2023, 2024, 2025, 2026}
 
-// MatchHandler handles HTTP requests for the /matches and /seasons resources.
 type MatchHandler struct{ db *gorm.DB }
 
-// NewMatchHandler creates a MatchHandler backed by the given database.
 func NewMatchHandler(db *gorm.DB) *MatchHandler { return &MatchHandler{db: db} }
 
-// List handles GET /matches.
-//
-// Supported query parameters:
-//
-//	league_id  UUID     filter by league
-//	status     string   "scheduled" | "live" | "finished" | "postponed"
-//	season     int      filter by season year (e.g. 2024 covers Jul 2024 - Jun 2025)
-//	year       int      filter by calendar year (e.g. 2024 covers Jan-Dec 2024)
-//	date       string   filter by a specific date (format: YYYY-MM-DD)
-//	limit      int      max results per page; default 50, max 200
-//	page       int      1-based page number; default 1
+// List คืนรายการแมตช์ตาม filter (league_id, status, season, year, date, page, limit)
 func (h *MatchHandler) List(c fiber.Ctx) error {
 	q := h.db.
 		Preload("HomeTeam").
@@ -55,8 +41,7 @@ func (h *MatchHandler) List(c fiber.Ctx) error {
 	return c.JSON(matches)
 }
 
-// Get handles GET /matches/:id.
-// Returns a single match with its related league, home team, and away team.
+// Get คืนข้อมูลแมตช์เดี่ยวตาม id
 func (h *MatchHandler) Get(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -79,8 +64,7 @@ func (h *MatchHandler) Get(c fiber.Ctx) error {
 	return c.JSON(match)
 }
 
-// Seasons handles GET /seasons.
-// Returns each tracked season with its label and the number of stored matches.
+// Seasons คืนรายการปีฤดูกาลและจำนวนแมตช์ในระบบ
 func (h *MatchHandler) Seasons(c fiber.Ctx) error {
 	type SeasonItem struct {
 		Season       int    `json:"season"`
@@ -108,26 +92,18 @@ func (h *MatchHandler) Seasons(c fiber.Ctx) error {
 	return c.JSON(results)
 }
 
-// ----------------------------------------------------------------------------
-// Helpers
-// ----------------------------------------------------------------------------
-
-// applyMatchFilters chains WHERE clauses onto q based on query parameters.
 func applyMatchFilters(q *gorm.DB, c fiber.Ctx) *gorm.DB {
-	// Filter by league UUID.
 	if raw := c.Query("league_id"); raw != "" {
 		if lid, err := uuid.Parse(raw); err == nil {
 			q = q.Where("league_id = ?", lid)
 		}
 	}
 
-	// Filter by match status.
 	if status := c.Query("status"); status != "" {
 		q = q.Where("status = ?", status)
 	}
 
-	// Filter by season year: a "season" window runs from July 1 of the given
-	// year to July 1 of the following year (e.g. season=2024 -> Aug 2024-May 2025).
+	// กรองตามฤดูกาล (เช่น 2024 -> 1 ก.ค. 2024 ถึง 1 ก.ค. 2025)
 	if raw := c.Query("season"); raw != "" {
 		if year, err := strconv.Atoi(raw); err == nil {
 			start, end := seasonDateRange(year)
@@ -135,7 +111,7 @@ func applyMatchFilters(q *gorm.DB, c fiber.Ctx) *gorm.DB {
 		}
 	}
 
-	// Filter by calendar year (January 1 to December 31).
+	// กรองตามปีปฏิทิน (1 ม.ค. ถึง 31 ธ.ค.)
 	if raw := c.Query("year"); raw != "" {
 		if year, err := strconv.Atoi(raw); err == nil {
 			start := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -144,7 +120,7 @@ func applyMatchFilters(q *gorm.DB, c fiber.Ctx) *gorm.DB {
 		}
 	}
 
-	// Filter by exact date (00:00:00 to 23:59:59 UTC).
+	// กรองตามวันที่ระบุ (YYYY-MM-DD)
 	if raw := c.Query("date"); raw != "" {
 		if t, err := time.Parse("2006-01-02", raw); err == nil {
 			start := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
@@ -156,16 +132,12 @@ func applyMatchFilters(q *gorm.DB, c fiber.Ctx) *gorm.DB {
 	return q
 }
 
-// seasonDateRange returns the start (inclusive) and end (exclusive) timestamps
-// for a given season year. A season runs from July 1 to June 30 the next year.
 func seasonDateRange(year int) (start, end time.Time) {
 	start = time.Date(year, time.July, 1, 0, 0, 0, 0, time.UTC)
 	end = time.Date(year+1, time.July, 1, 0, 0, 0, 0, time.UTC)
 	return
 }
 
-// parseLimitParam parses a string into a page-size limit clamped to [1, max].
-// Returns defaultVal when the string is empty or invalid.
 func parseLimitParam(raw string, defaultVal, max int) int {
 	if raw == "" {
 		return defaultVal

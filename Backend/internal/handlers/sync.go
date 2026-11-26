@@ -12,40 +12,26 @@ import (
 	"gorm.io/gorm"
 )
 
-// SyncHandler handles on-demand data synchronisation from API-Football.
 type SyncHandler struct {
 	db  *gorm.DB
 	cfg *config.Config
 }
 
-// NewSyncHandler creates a SyncHandler with the given database and config.
 func NewSyncHandler(db *gorm.DB, cfg *config.Config) *SyncHandler {
 	return &SyncHandler{db: db, cfg: cfg}
 }
 
-// syncRequest is the JSON body accepted by SyncFixtures.
 type syncRequest struct {
-	Season int    `json:"season"`           // season year, e.g. 2024
-	From   string `json:"from,omitempty"`   // optional start date YYYY-MM-DD
-	To     string `json:"to,omitempty"`     // optional end date   YYYY-MM-DD
+	Season int    `json:"season"`
+	From   string `json:"from,omitempty"`
+	To     string `json:"to,omitempty"`
 }
 
-// SyncFixtures handles POST /sync/fixtures.
-//
-// It fetches fixtures from API-Football for all leagues that have an
-// external_api_id set, then upserts the results into the database.
-//
-// Request body (JSON):
-//
-//	{ "season": 2024, "from": "2024-08-01", "to": "2024-12-31" }
-//
-// "from" and "to" are optional. When omitted the full season is synced.
-// "season" falls back to FOOTBALL_SEASON from the environment when omitted.
+// SyncFixtures ดึงข้อมูลจาก API-Football ลงฐานข้อมูลตามฤดูกาลที่ระบุ
 func (h *SyncHandler) SyncFixtures(c fiber.Ctx) error {
 	var req syncRequest
 	_ = c.Bind().Body(&req)
 
-	// Fall back to the configured default season.
 	if req.Season == 0 {
 		req.Season = h.cfg.Season
 	}
@@ -83,9 +69,6 @@ func (h *SyncHandler) SyncFixtures(c fiber.Ctx) error {
 	})
 }
 
-// parseDateRange parses optional YYYY-MM-DD strings into time.Time values.
-// Dates are interpreted in Asia/Bangkok time to match API-Football's timezone.
-// Returns zero values when the strings are empty or malformed.
 func parseDateRange(fromStr, toStr string) (from, to time.Time) {
 	loc, _ := time.LoadLocation(apifootball.DefaultTimezone)
 

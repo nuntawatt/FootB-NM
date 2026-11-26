@@ -1,9 +1,3 @@
-// Command api starts the Football API HTTP server.
-//
-// All configuration is read from environment variables (see internal/config).
-// Run with:
-//
-//	go run ./cmd/api
 package main
 
 import (
@@ -22,44 +16,34 @@ import (
 )
 
 func main() {
-	// 1. Load configuration from environment / .env file.
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
-	// 2. Open the PostgreSQL connection pool.
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("connect database: %v", err)
 	}
 	log.Println("database connected")
 
-	// 3. Create the Fiber application.
-	//    The custom error handler ensures every error is returned as JSON,
-	//    including panics caught by the recover middleware.
 	app := fiber.New(fiber.Config{
 		ErrorHandler: jsonErrorHandler,
 	})
 
-	// 4. Global middleware (applied in order):
-	//    recover -> logger -> cors
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New())
 
-	// 5. Register all routes.
 	registerRoutes(app, db, cfg)
 
-	// 6. Start listening.
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
 
-// registerRoutes mounts every route group under /api/v1.
 func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	api := app.Group("/api/v1")
 
-	// Health check — also verifies the database is reachable.
+	// Health check
 	api.Get("/health", func(c fiber.Ctx) error {
 		sqlDB, err := db.DB()
 		if err != nil || sqlDB.Ping() != nil {
@@ -68,35 +52,32 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	// Seasons — dropdown data for the frontend.
+	// Seasons
 	matches := handlers.NewMatchHandler(db)
 	api.Get("/seasons", matches.Seasons)
 
-	// Leagues — read-only competition list.
+	// Leagues
 	leagues := handlers.NewLeagueHandler(db)
 	lg := api.Group("/leagues")
 	lg.Get("/", leagues.List)
 	lg.Get("/:id", leagues.Get)
 
-	// Teams — clubs filtered optionally by league.
+	// Teams
 	teams := handlers.NewTeamHandler(db)
 	tg := api.Group("/teams")
 	tg.Get("/", teams.List)
 	tg.Get("/:id", teams.Get)
 
-	// Matches — fixture list with rich filtering, plus single match detail.
+	// Matches
 	mg := api.Group("/matches")
 	mg.Get("/", matches.List)
 	mg.Get("/:id", matches.Get)
 
-	// Sync — on-demand pull from API-Football into the database.
+	// Sync
 	sync := handlers.NewSyncHandler(db, cfg)
 	api.Post("/sync/fixtures", sync.SyncFixtures)
 }
 
-// jsonErrorHandler converts any error into a consistent JSON response.
-// fiber.Error values carry an explicit HTTP status code; all other errors
-// are treated as 500 Internal Server Error and logged.
 func jsonErrorHandler(c fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
 	msg := "internal server error"

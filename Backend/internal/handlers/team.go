@@ -10,15 +10,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// TeamHandler handles HTTP requests for the /teams resource.
 type TeamHandler struct{ db *gorm.DB }
 
-// NewTeamHandler creates a TeamHandler backed by the given database.
 func NewTeamHandler(db *gorm.DB) *TeamHandler { return &TeamHandler{db: db} }
 
-// List handles GET /teams.
-// Accepts an optional ?league_id=<uuid> query parameter to filter by league.
-// Results are ordered alphabetically by name.
+// List คืนรายการทีม (สามารถ filter ด้วย ?league_id=... ได้)
 func (h *TeamHandler) List(c fiber.Ctx) error {
 	q := h.db.Model(&models.Team{})
 
@@ -35,8 +31,7 @@ func (h *TeamHandler) List(c fiber.Ctx) error {
 	return c.JSON(teams)
 }
 
-// Get handles GET /teams/:id.
-// Returns a single team by its UUID, or 404 if not found.
+// Get คืนข้อมูลทีมตาม id
 func (h *TeamHandler) Get(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
