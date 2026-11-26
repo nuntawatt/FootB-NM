@@ -1,6 +1,6 @@
 // คำสั่ง sync ดึงข้อมูลจาก API-Football มาลงฐานข้อมูล
 //
-//	go run ./cmd/sync leagues ดูรายการลีกของประเทศ (ค่าเริ่มต้น Thailand)
+//	go run ./cmd/sync leagues ดูรายการลีกของประเทศ ค่าเริ่มต้น Thailand
 //	go run ./cmd/sync link -name "Thai League 1" -id 296
 //	go run ./cmd/sync fixtures -from 2026-11-05 -to 2026-12-09
 package main
