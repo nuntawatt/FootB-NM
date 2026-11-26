@@ -8,6 +8,7 @@ import (
 	"football/internal/config"
 	"football/internal/middleware"
 	"football/internal/models"
+	"football/internal/validator"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -16,16 +17,36 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuthHandler struct {
+type UserHandler struct {
 	db  *gorm.DB
 	cfg *config.Config
 }
 
-func NewAuthHandler(db *gorm.DB, cfg *config.Config) *AuthHandler {
-	return &AuthHandler{db: db, cfg: cfg}
+func NewUserHandler(db *gorm.DB, cfg *config.Config) *UserHandler {
+	return &UserHandler{db: db, cfg: cfg}
 }
 
-func (h *AuthHandler) generateToken(user models.User) (string, error) {
+type UserResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	AvatarURL string    `json:"avatar_url"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func toUserResponse(u models.User) UserResponse {
+	return UserResponse{
+		ID:        u.ID,
+		Username:  u.Username,
+		Email:     u.Email,
+		AvatarURL: u.AvatarURL,
+		Role:      u.Role,
+		CreatedAt: u.CreatedAt,
+	}
+}
+
+func (h *UserHandler) generateToken(user models.User) (string, error) {
 	claims := middleware.JWTClaims{
 		UserID:   user.ID,
 		Username: user.Username,
@@ -39,19 +60,18 @@ func (h *AuthHandler) generateToken(user models.User) (string, error) {
 	return token.SignedString([]byte(h.cfg.JWTSecret))
 }
 
-// Register สมัครสมาชิกใหม่พร้อม Validation ละเอียด
-func (h *AuthHandler) Register(c fiber.Ctx) error {
-	var in models.RegisterRequest
+// Register สมัครสมาชิกใหม่
+func (h *UserHandler) Register(c fiber.Ctx) error {
+	var in validator.RegisterInput
 	if err := c.Bind().Body(&in); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
-	// Validate ข้อมูลนำเข้าอย่างละเอียด
+	// ใช้ validator ตรวจสอบข้อมูลผู้ใช้อย่างละเอียด
 	if err := in.Validate(); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	// ตรวจสอบชื่อผู้ใช้หรืออีเมลซ้ำในฐานข้อมูล
 	var existing []models.User
 	if err := h.db.Where("email = ? OR username = ?", in.Email, in.Username).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
 		if strings.EqualFold(existing[0].Email, in.Email) {
@@ -60,7 +80,6 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusConflict, "username is already taken")
 	}
 
-	// แฮชรหัสผ่านด้วย bcrypt
 	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to hash password")
@@ -91,13 +110,13 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"status": "success",
 		"token":  token,
-		"user":   models.ToUserResponse(user),
+		"user":   toUserResponse(user),
 	})
 }
 
-// Login เข้าสู่ระบบพร้อม Validation
-func (h *AuthHandler) Login(c fiber.Ctx) error {
-	var in models.LoginRequest
+// Login เข้าสู่ระบบ
+func (h *UserHandler) Login(c fiber.Ctx) error {
+	var in validator.LoginInput
 	if err := c.Bind().Body(&in); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
@@ -128,12 +147,12 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status": "success",
 		"token":  token,
-		"user":   models.ToUserResponse(user),
+		"user":   toUserResponse(user),
 	})
 }
 
 // Profile คืนข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่
-func (h *AuthHandler) Profile(c fiber.Ctx) error {
+func (h *UserHandler) Profile(c fiber.Ctx) error {
 	val := c.Locals("userID")
 	if val == nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
@@ -145,18 +164,18 @@ func (h *AuthHandler) Profile(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "user not found")
 	}
 
-	return c.JSON(models.ToUserResponse(user))
+	return c.JSON(toUserResponse(user))
 }
 
-// UpdateProfile แก้ไขข้อมูลโปรไฟล์พร้อม Validation
-func (h *AuthHandler) UpdateProfile(c fiber.Ctx) error {
+// UpdateProfile แก้ไขข้อมูลโปรไฟล์
+func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 	val := c.Locals("userID")
 	if val == nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 	}
 	userID := val.(uuid.UUID)
 
-	var in models.UpdateProfileRequest
+	var in validator.UpdateProfileInput
 	if err := c.Bind().Body(&in); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
@@ -191,6 +210,6 @@ func (h *AuthHandler) UpdateProfile(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":  "success",
 		"message": "profile updated successfully",
-		"user":    models.ToUserResponse(user),
+		"user":    toUserResponse(user),
 	})
 }

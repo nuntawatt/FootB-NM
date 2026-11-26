@@ -1,14 +1,11 @@
-package models
+package validator
 
 import (
 	"errors"
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 	"unicode"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -16,24 +13,22 @@ var (
 	usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,30}$`)
 )
 
-type RegisterRequest struct {
+type RegisterInput struct {
 	Username  string `json:"username"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	AvatarURL string `json:"avatar_url"`
 }
 
-func (r *RegisterRequest) Sanitize() {
+func (r *RegisterInput) Sanitize() {
 	r.Username = strings.TrimSpace(r.Username)
 	r.Email = strings.ToLower(strings.TrimSpace(r.Email))
 	r.AvatarURL = strings.TrimSpace(r.AvatarURL)
 }
 
-// Validate ตรวจสอบความถูกต้องของข้อมูลสมัครสมาชิกอย่างละเอียด
-func (r *RegisterRequest) Validate() error {
+func (r *RegisterInput) Validate() error {
 	r.Sanitize()
 
-	// 1. ตรวจสอบ Username
 	if r.Username == "" {
 		return errors.New("username is required")
 	}
@@ -44,7 +39,6 @@ func (r *RegisterRequest) Validate() error {
 		return errors.New("username can only contain letters, numbers, and underscores (no spaces or special characters)")
 	}
 
-	// 2. ตรวจสอบ Email
 	if r.Email == "" {
 		return errors.New("email is required")
 	}
@@ -55,7 +49,6 @@ func (r *RegisterRequest) Validate() error {
 		return errors.New("invalid email address format (e.g. user@example.com)")
 	}
 
-	// 3. ตรวจสอบ Password
 	if r.Password == "" {
 		return errors.New("password is required")
 	}
@@ -79,7 +72,6 @@ func (r *RegisterRequest) Validate() error {
 		return errors.New("password must contain at least one letter and one number")
 	}
 
-	// 4. ตรวจสอบ AvatarURL (ถ้ามี)
 	if r.AvatarURL != "" {
 		u, err := url.ParseRequestURI(r.AvatarURL)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
@@ -90,16 +82,16 @@ func (r *RegisterRequest) Validate() error {
 	return nil
 }
 
-type LoginRequest struct {
-	Email    string `json:"email"` // สามารถเป็นอีเมลหรือชื่อผู้ใช้ได้
+type LoginInput struct {
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-func (l *LoginRequest) Sanitize() {
+func (l *LoginInput) Sanitize() {
 	l.Email = strings.TrimSpace(l.Email)
 }
 
-func (l *LoginRequest) Validate() error {
+func (l *LoginInput) Validate() error {
 	l.Sanitize()
 	if l.Email == "" {
 		return errors.New("email or username is required")
@@ -110,17 +102,17 @@ func (l *LoginRequest) Validate() error {
 	return nil
 }
 
-type UpdateProfileRequest struct {
+type UpdateProfileInput struct {
 	Username  string `json:"username"`
 	AvatarURL string `json:"avatar_url"`
 }
 
-func (u *UpdateProfileRequest) Sanitize() {
+func (u *UpdateProfileInput) Sanitize() {
 	u.Username = strings.TrimSpace(u.Username)
 	u.AvatarURL = strings.TrimSpace(u.AvatarURL)
 }
 
-func (u *UpdateProfileRequest) Validate() error {
+func (u *UpdateProfileInput) Validate() error {
 	u.Sanitize()
 	if u.Username == "" && u.AvatarURL == "" {
 		return errors.New("at least one field (username or avatar_url) must be provided to update")
@@ -140,24 +132,4 @@ func (u *UpdateProfileRequest) Validate() error {
 		}
 	}
 	return nil
-}
-
-type UserResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	AvatarURL string    `json:"avatar_url"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func ToUserResponse(u User) UserResponse {
-	return UserResponse{
-		ID:        u.ID,
-		Username:  u.Username,
-		Email:     u.Email,
-		AvatarURL: u.AvatarURL,
-		Role:      u.Role,
-		CreatedAt: u.CreatedAt,
-	}
 }

@@ -84,20 +84,20 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	standings := handlers.NewStandingsHandler(db)
 	api.Get("/standings", standings.Get)
 
-	// Auth & User Profile
-	auth := handlers.NewAuthHandler(db, cfg)
+	// User & Profile
+	users := handlers.NewUserHandler(db, cfg)
 	protected := middleware.Protected(cfg.JWTSecret)
 	optAuth := middleware.OptionalAuth(cfg.JWTSecret)
 
-	api.Post("/register", auth.Register)
-	api.Post("/login", auth.Login)
-	api.Post("/auth/register", auth.Register)
-	api.Post("/auth/login", auth.Login)
+	api.Post("/register", users.Register)
+	api.Post("/login", users.Login)
+	api.Post("/users/register", users.Register)
+	api.Post("/users/login", users.Login)
 
-	api.Get("/profile", protected, auth.Profile)
-	api.Put("/profile", protected, auth.UpdateProfile)
-	api.Get("/auth/profile", protected, auth.Profile)
-	api.Put("/auth/profile", protected, auth.UpdateProfile)
+	api.Get("/profile", protected, users.Profile)
+	api.Put("/profile", protected, users.UpdateProfile)
+	api.Get("/users/profile", protected, users.Profile)
+	api.Put("/users/profile", protected, users.UpdateProfile)
 
 	// Favorites (ทีมโปรด - ดึง user จาก JWT อัตโนมัติ หรือ fallback เป็น X-User-ID)
 	favorites := handlers.NewFavoriteHandler(db)
