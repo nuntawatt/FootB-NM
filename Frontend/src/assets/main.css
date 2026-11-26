@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased;
+  }
+
+  /* Dark mode (default) */
+  .dark body,
+  .dark {
+    @apply bg-sport-bg text-white;
+  }
+
+  /* Light mode */
+  body {
+    @apply bg-gray-100 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-sport-red hover:bg-sport-red-hover text-white font-semibold
+           px-4 py-2 rounded-lg transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-sport-card border border-sport-border rounded-xl;
+  }
+
+  .dark .card {
+    @apply bg-sport-card border-sport-border;
+  }
+
+  .light .card {
+    @apply bg-white border-gray-200;
+  }
+}
+
+/* Custom scrollbar for dark theme */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
