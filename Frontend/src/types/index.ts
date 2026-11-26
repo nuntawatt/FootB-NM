@@ -159,6 +159,31 @@ export interface VenueInfo {
   broadcast: string[]
 }
 
+// === Match Events & Stats (Mock — ยังไม่มี API) ===
+
+export interface MatchEvent {
+  id: string
+  minute: number
+  type: 'goal' | 'yellow_card' | 'red_card'
+  team: 'home' | 'away'
+  player_name: string
+  assist_name?: string
+}
+
+export interface MatchStatItem {
+  label: string
+  home: number
+  away: number
+  unit?: string
+}
+
+export interface MatchExtraMock {
+  ht_home_score: number
+  ht_away_score: number
+  events: MatchEvent[]
+  stats: MatchStatItem[]
+}
+
 // === Hero Highlights (GET /heroes) ===
 
 export interface HeroHighlight {

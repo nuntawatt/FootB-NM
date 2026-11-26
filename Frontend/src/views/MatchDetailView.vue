@@ -10,7 +10,12 @@
     </div>
 
     <div v-else-if="match" class="space-y-5">
-      <MatchHeader :match="match" />
+      <MatchHeader
+        :match="match"
+        :venue="venue"
+        :ht-home="extraMock.ht_home_score"
+        :ht-away="extraMock.ht_away_score"
+      />
 
       <!-- Venue & Broadcast Info -->
       <div v-if="venue" class="card p-4 flex flex-wrap items-center justify-between gap-4 text-xs sm:text-sm">
@@ -32,6 +37,13 @@
         </div>
       </div>
 
+      <!-- Events & Statistics (Mock) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <MatchEvents :events="extraMock.events" />
+        <MatchStats :stats="extraMock.stats" />
+      </div>
+
+      <!-- Lineups -->
       <LineupTable
         :home-team="match.home_team"
         :away-team="match.away_team"
@@ -53,9 +65,12 @@ import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { fetchMatch, fetchMatchLineups, fetchMatchVenue } from '@/api/matches'
 import { mockLineup } from '@/mock/squad'
+import { mockMatchExtra } from '@/mock/matchDetails'
 import type { LineupPlayer, Match, MatchLineup, VenueInfo } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import MatchHeader from '@/components/matches/MatchHeader.vue'
+import MatchEvents from '@/components/matches/MatchEvents.vue'
+import MatchStats from '@/components/matches/MatchStats.vue'
 import LineupTable from '@/components/matches/LineupTable.vue'
 
 const route = useRoute()
@@ -67,6 +82,7 @@ const lineups = ref<MatchLineup | null>(null)
 const venue = ref<VenueInfo | null>(null)
 const loading = ref(false)
 const error = ref('')
+const extraMock = mockMatchExtra
 
 const homeStarting = computed<LineupPlayer[]>(() => {
   if (lineups.value?.home.starting.length) return lineups.value.home.starting
