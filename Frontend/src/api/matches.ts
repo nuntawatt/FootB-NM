@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Match } from '@/types'
+import type { Match, MatchLineup, VenueInfo } from '@/types'
 
 export interface MatchFilters {
   season?: number
@@ -26,5 +26,15 @@ export async function fetchMatches(filters: MatchFilters = {}): Promise<Match[]>
 
 export async function fetchMatch(id: string): Promise<Match> {
   const { data } = await apiClient.get<Match>(`/matches/${id}`)
+  return data
+}
+
+export async function fetchMatchLineups(id: string): Promise<MatchLineup> {
+  const { data } = await apiClient.get<MatchLineup>(`/matches/${id}/lineups`)
+  return data
+}
+
+export async function fetchMatchVenue(id: string): Promise<VenueInfo> {
+  const { data } = await apiClient.get<VenueInfo>(`/matches/${id}/venue`)
   return data
 }

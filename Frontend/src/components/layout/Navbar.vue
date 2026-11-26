@@ -82,7 +82,7 @@
         </RouterLink>
       </nav>
 
-      <!-- Right Controls: Theme Toggle + User + Mobile Menu -->
+      <!-- Right Controls: Theme Toggle + User/Auth + Mobile Menu -->
       <div class="flex items-center gap-3 shrink-0">
         <!-- Dark/Light Toggle -->
         <button
@@ -102,14 +102,32 @@
           </svg>
         </button>
 
-        <!-- User Profile (Mock) -->
-        <div class="hidden sm:flex items-center gap-2">
-          <span class="text-xs font-medium" :class="isDark ? 'text-neutral-400' : 'text-gray-600'">username</span>
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold border"
-            :class="isDark ? 'bg-neutral-700 text-neutral-300 border-sport-border' : 'bg-gray-200 text-gray-700 border-gray-300'">
-            U
-          </div>
+        <!-- Authenticated User -->
+        <div v-if="authStore.isAuthenticated && authStore.user" class="hidden sm:flex items-center gap-2">
+          <img
+            :src="authStore.user.avatar_url"
+            :alt="authStore.user.username"
+            class="w-8 h-8 rounded-full object-cover border border-sport-red"
+          />
+          <span class="text-xs font-semibold max-w-[100px] truncate">{{ authStore.user.username }}</span>
+          <button
+            type="button"
+            @click="authStore.logout()"
+            class="text-[11px] px-2 py-1 rounded border border-sport-border hover:border-sport-red hover:text-sport-red transition-colors"
+          >
+            ออก
+          </button>
         </div>
+
+        <!-- Login Button -->
+        <button
+          v-else
+          type="button"
+          @click="showAuthModal = true"
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sport-red hover:bg-sport-red-hover text-white transition-colors"
+        >
+          เข้าสู่ระบบ
+        </button>
 
         <!-- Mobile Menu Button -->
         <button
@@ -144,8 +162,26 @@
       >
         {{ item.label }}
       </RouterLink>
+      <button
+        v-if="!authStore.isAuthenticated"
+        type="button"
+        @click="mobileMenuOpen = false; showAuthModal = true"
+        class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-sport-red"
+      >
+        เข้าสู่ระบบ / สมัครสมาชิก
+      </button>
+      <button
+        v-else
+        type="button"
+        @click="authStore.logout(); mobileMenuOpen = false"
+        class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-sport-red"
+      >
+        ออกจากระบบ ({{ authStore.user?.username }})
+      </button>
     </div>
   </header>
+
+  <AuthModal :open="showAuthModal" @close="showAuthModal = false" />
 </template>
 
 <script setup lang="ts">
@@ -153,12 +189,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore } from '@/stores/auth'
 import { fetchTeams } from '@/api/teams'
 import type { Team } from '@/types'
+import AuthModal from './AuthModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
 const { isDark } = storeToRefs(themeStore)
 
 const navItems = [
@@ -171,9 +210,11 @@ const navItems = [
 const searchQuery = ref('')
 const showResults = ref(false)
 const mobileMenuOpen = ref(false)
+const showAuthModal = ref(false)
 const allTeams = ref<Team[]>([])
 
 onMounted(async () => {
+  await authStore.loadProfile()
   try {
     allTeams.value = await fetchTeams()
   } catch {

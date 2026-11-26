@@ -17,13 +17,10 @@
         <p class="text-xs" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
           {{ team.league?.country || 'Thailand' }}
         </p>
-        <span class="inline-block mt-1 px-2.5 py-0.5 text-xs font-bold rounded bg-sport-red text-white">
-          #5 ตารางคะแนน
-        </span>
       </div>
     </div>
 
-    <!-- Coach Card (Mock) -->
+    <!-- Coach Card -->
     <div class="card p-4 flex flex-col items-center justify-center text-center">
       <img
         :src="coachImage"
@@ -32,7 +29,9 @@
         @error="onImgError"
       />
       <p class="font-bold text-sm" :class="isDark ? 'text-white' : 'text-gray-900'">{{ coachName }}</p>
-      <p class="text-[11px]" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">ผู้จัดการทีม (Mock)</p>
+      <p class="text-[11px]" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
+        หัวหน้าผู้ฝึกสอน{{ coachNationality ? ` (${coachNationality})` : '' }}
+      </p>
     </div>
   </div>
 </template>
@@ -46,12 +45,13 @@ defineProps<{
   team: Team
   coachName: string
   coachImage: string
+  coachNationality?: string
 }>()
 
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
 
 function onImgError(e: Event) {
-  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=Coach'
+  (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=Coach&background=0F172A&color=fff&size=256'
 }
 </script>

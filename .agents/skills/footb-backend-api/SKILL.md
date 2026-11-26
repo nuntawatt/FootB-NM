@@ -10,110 +10,114 @@ description: >-
 
 Base URL: `http://localhost:3000/api/v1`
 
-## Endpoints
+## Endpoints (24 total)
 
-| # | Method | Path | Description | Query Params |
-|---|--------|------|-------------|--------------|
-| 1 | GET | `/health` | Health check (server + DB) | — |
-| 2 | GET | `/seasons` | List seasons 2022–2026 for dropdown | — |
-| 3 | GET | `/leagues` | List all leagues/cups (ordered by name) | — |
-| 4 | GET | `/leagues/:id` | Get league by UUID | — |
-| 5 | GET | `/teams` | List teams (ordered by name) | `league_id` (UUID) |
-| 6 | GET | `/teams/:id` | Get team by UUID | — |
-| 7 | GET | `/matches` | List matches with preloaded relations | `season`, `year`, `status`, `league_id`, `date` (YYYY-MM-DD), `limit` (1–200, default 50), `page` |
-| 8 | GET | `/matches/:id` | Get match by UUID (preloaded) | — |
-| 9 | POST | `/sync/fixtures` | Sync data from API-Football | Body: `{ "season": int, "from?": "YYYY-MM-DD", "to?": "YYYY-MM-DD" }` |
+| Category | Method | Path | Auth | Description / Params |
+|----------|--------|------|------|----------------------|
+| **Auth** | POST | `/register` (or `/users/register`) | Public | Body: `{ username, email, password, avatar_url? }` -> `{ status, token, user }` |
+| | POST | `/login` (or `/users/login`) | Public | Body: `{ email, password }` (email or username) -> `{ status, token, user }` |
+| | GET | `/profile` (or `/users/profile`) | Bearer | Get current user profile |
+| | PUT | `/profile` (or `/users/profile`) | Bearer | Body: `{ username?, avatar_url? }` -> `{ status, message, user }` |
+| **Seasons** | GET | `/seasons` | Public | List seasons 2022–2026 (`season`, `label`, `matches_count`) |
+| **Leagues** | GET | `/leagues` | Public | List all leagues/cups |
+| | GET | `/leagues/:id` | Public | Get league by UUID |
+| **Teams** | GET | `/teams` | Public | List teams (`?league_id=UUID`) |
+| | GET | `/teams/:id` | Public | Get team by UUID |
+| | GET | `/teams/:id/form` | Public | Last 5 finished matches (`FormMatch[]`) |
+| | GET | `/teams/:id/coach` | Public | Team head coach (`Coach`) |
+| | GET | `/teams/:id/squad` | Public | Team players (`Player[]`) |
+| **Matches** | GET | `/matches` | Public | List matches (`season`, `year`, `status`, `league_id`, `date`, `limit`, `page`) |
+| | GET | `/matches/:id` | Public | Get match by UUID (preloaded) |
+| | GET | `/matches/:id/lineups` | Public | Starting XI, formation, coach, subs (`MatchLineup`) |
+| | GET | `/matches/:id/venue` | Public | Stadium, city, capacity, broadcast (`VenueInfo`) |
+| **Standings** | GET | `/standings` | Public | Computed league table (`?season=2024&league_id=UUID`) |
+| **Favorites** | GET | `/favorites` | Optional | List user's favorite `Team[]` (JWT or `X-User-ID` header) |
+| | POST | `/favorites/:team_id` | Optional | Add team to favorites |
+| | DELETE | `/favorites/:team_id` | Optional | Remove team from favorites |
+| **Highlights** | GET | `/heroes` | Public | Homepage hero banners (`HeroHighlight[]`) |
+| **System** | GET | `/health` | Public | Health check (`{ status: "ok" }`) |
+| **Sync** | POST | `/sync/fixtures` | Public | Body: `{ season, from?, to? }` |
+| | POST | `/sync/squads` | Public | Sync coaches & players for teams |
 
-## Data Models (JSON shapes)
+## Key Data Models (JSON shapes)
 
-### League
+### User & Auth Response
 ```json
 {
   "id": "uuid",
-  "name": "string",
-  "short_name": "string",
-  "country": "string",
-  "logo_url": "string",
-  "type": "league | cup",
-  "sort_order": 0,
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "username": "string",
+  "email": "string",
+  "avatar_url": "string",
+  "role": "user | admin",
+  "created_at": "timestamp"
 }
 ```
+Validation: `username` 3–30 (`[a-zA-Z0-9_]`), `password` 6–72 (must contain letter + number), `avatar_url` must start with `http://` or `https://` if set.
 
-### Team
+### League / Team / Match
+- **League**: `id`, `name`, `short_name`, `country`, `logo_url`, `type` (`league|cup`), `sort_order`
+- **Team**: `id`, `league_id`, `name`, `short_name`, `logo_url`, `league?`
+- **Match**: `id`, `league_id`, `home_team_id`, `away_team_id`, `match_date`, `home_score?`, `away_score?`, `home_penalty_score?`, `away_penalty_score?`, `minute?`, `round`, `status` (`scheduled|live|finished|postponed`), `home_team`, `away_team`, `league`
+
+### StandingsRow (`GET /standings`)
 ```json
 {
-  "id": "uuid",
-  "league_id": "uuid",
-  "name": "string",
-  "short_name": "string",
-  "logo_url": "string",
-  "league": "League? (omitempty)",
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "rank": 1,
+  "team_id": "uuid",
+  "team_name": "string",
+  "team_logo": "string",
+  "played": 30,
+  "won": 20,
+  "drawn": 9,
+  "lost": 1,
+  "goals_for": 70,
+  "goals_against": 27,
+  "goal_diff": 43,
+  "points": 69,
+  "form": ["W", "W", "D", "W", "W"]
 }
 ```
 
-### Match (preloaded)
+### FormMatch (`GET /teams/:id/form`)
 ```json
 {
-  "id": "uuid",
-  "league_id": "uuid",
-  "home_team_id": "uuid",
-  "away_team_id": "uuid",
-  "match_date": "timestamp",
-  "home_score": "int16?",
-  "away_score": "int16?",
-  "home_penalty_score": "int16?",
-  "away_penalty_score": "int16?",
-  "minute": "int16?",
-  "round": "string",
-  "status": "scheduled | live | finished | postponed",
-  "home_team": "Team",
-  "away_team": "Team",
-  "league": "League",
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
+  "match_id": "uuid",
+  "date": "YYYY-MM-DD",
+  "opponent": "string",
+  "score": "2 - 1",
+  "result": "W | D | L",
+  "is_home": true
 }
 ```
 
-### Season Item (from /seasons)
+### Coach (`GET /teams/:id/coach`) & Player (`GET /teams/:id/squad`)
+- **Coach**: `id`, `team_id`, `name`, `nationality`, `photo_url`
+- **Player**: `id`, `team_id`, `name`, `number?`, `position`, `age?`, `nationality`, `photo_url`
+
+### MatchLineup (`GET /matches/:id/lineups`)
 ```json
 {
-  "season": 2024,
-  "label": "2024/2025",
-  "matches_count": 240
+  "match_id": "uuid",
+  "home": {
+    "team_id": "uuid",
+    "team_name": "string",
+    "formation": "4-3-3",
+    "coach_name": "string",
+    "starting": [{ "number": 1, "name": "string", "position": "GK", "rating": "7.0" }],
+    "substitutes": []
+  },
+  "away": { "...": "same as home" }
 }
 ```
 
-### User (future — no API endpoint yet)
-Fields: `id`, `username`, `email`, `avatar_url`, `role` (user|admin)
-`password_hash` hidden from JSON.
+### VenueInfo (`GET /matches/:id/venue`)
+`{ "match_id": "uuid", "stadium": "string", "city": "string", "capacity": 25000, "broadcast": ["string"] }`
 
-### Prediction (future — no API endpoint yet)
-Fields: `id`, `user_id`, `match_id`, `predicted_home_score`, `predicted_away_score`,
-`predicted_result` (home_win|draw|away_win), `is_correct`, `points_earned`
-
-### UserFavoriteTeam (future — no API endpoint yet)
-Fields: `user_id`, `team_id`, `created_at`
-
-## Tech Stack
-- **Language:** Go
-- **Framework:** Fiber v3
-- **ORM:** GORM (PostgreSQL)
-- **IDs:** UUID (gen_random_uuid)
-- **Soft delete:** `deleted_at` column (GORM convention)
-- **CORS:** enabled globally (open)
-- **Error format:** `{ "error": "message" }` with appropriate HTTP status code
-- **Config:** ENV vars via `.env` — `PORT` (default 3000), `DATABASE_URL`, `FOOTBALL_API_KEY`
+### HeroHighlight (`GET /heroes`)
+`{ "id": "string", "title": "string", "subtitle": "string", "image_url": "string", "tag": "string", "match_id?": "uuid", "redirect_url?": "string" }`
 
 ## Key Notes for Frontend
-1. All IDs are UUID strings
-2. Nullable numeric fields (`home_score`, `away_score`, etc.) return `null` when not set
-3. Match list ordered by `match_date DESC`
-4. Season filter: `season=2024` = Jul 2024 – Jun 2025
-5. Year filter: `year=2024` = Jan 2024 – Dec 2024
-6. Default page size 50, max 200
-7. Preloaded relations (`home_team`, `away_team`, `league`) included in match responses
-8. No auth required for any endpoint currently
+1. All IDs are UUID strings; error responses return `{ "error": "message" }`.
+2. Auth uses `Authorization: Bearer <JWT>` (7-day expiry).
+3. `/favorites` supports JWT or `X-User-ID: <UUID>` fallback (defaults to `00000000-0000-0000-0000-000000000001` if unauthenticated).
+4. `MatchLineup.starting[].rating` is a string (e.g. `"7.0"`), whereas `Team.squad` uses `Player` without `rating`.

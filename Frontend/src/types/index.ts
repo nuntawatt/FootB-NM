@@ -1,5 +1,20 @@
 // === API Response Types (ตรงกับ backend models) ===
 
+export interface User {
+  id: string
+  username: string
+  email: string
+  avatar_url: string
+  role: 'user' | 'admin'
+  created_at: string
+}
+
+export interface AuthResponse {
+  status: string
+  token: string
+  user: User
+}
+
 export interface League {
   id: string
   name: string
@@ -49,7 +64,23 @@ export interface SeasonItem {
   matches_count: number
 }
 
-// === Mock Types (ยังไม่มี API) ===
+// === Standings (GET /standings) ===
+
+export interface ApiStandingsRow {
+  rank: number
+  team_id: string
+  team_name: string
+  team_logo: string
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  goal_diff: number
+  points: number
+  form: string[] // ["W", "D", "L"]
+}
 
 export interface StandingRow {
   position: number
@@ -62,8 +93,85 @@ export interface StandingRow {
   goals_against: number
   goal_difference: number
   points: number
+  form?: string[]
   zone?: 'champion' | 'acl' | 'acl2' | 'relegation'
 }
+
+// === Team Extra (GET /teams/:id/form, /coach, /squad) ===
+
+export interface ApiFormMatch {
+  match_id: string
+  date: string
+  opponent: string
+  score: string
+  result: 'W' | 'D' | 'L'
+  is_home: boolean
+}
+
+export interface Coach {
+  id: string
+  team_id: string
+  name: string
+  nationality: string
+  photo_url: string
+}
+
+export interface Player {
+  id: string
+  team_id: string
+  name: string
+  number: number | null
+  position: string
+  age: number | null
+  nationality: string
+  photo_url: string
+}
+
+// === Match Extra (GET /matches/:id/lineups, /venue) ===
+
+export interface LineupPlayer {
+  number: number | null
+  name: string
+  position: string
+  rating?: string
+}
+
+export interface LineupTeam {
+  team_id: string
+  team_name: string
+  formation: string
+  coach_name: string
+  starting: LineupPlayer[]
+  substitutes: LineupPlayer[]
+}
+
+export interface MatchLineup {
+  match_id: string
+  home: LineupTeam
+  away: LineupTeam
+}
+
+export interface VenueInfo {
+  match_id: string
+  stadium: string
+  city: string
+  capacity: number
+  broadcast: string[]
+}
+
+// === Hero Highlights (GET /heroes) ===
+
+export interface HeroHighlight {
+  id: string
+  title: string
+  subtitle: string
+  image_url: string
+  tag: string
+  match_id?: string
+  redirect_url?: string
+}
+
+// === Legacy / Fallback Mock Types ===
 
 export interface SquadPlayer {
   position: string
@@ -98,8 +206,6 @@ export interface FavoriteTeamCard {
   next_match_date: string
   broadcast: string
 }
-
-// === Sidebar League (Hardcode) ===
 
 export interface SidebarLeague {
   id: string
