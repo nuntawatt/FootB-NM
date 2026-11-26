@@ -68,7 +68,7 @@ func New(apiKey string, opts ...Option) *Client {
 		apiKey:      apiKey,
 		timezone:    DefaultTimezone,
 		http:        &http.Client{Timeout: 20 * time.Second},
-		minInterval: time.Second,
+		minInterval: 6500 * time.Millisecond, // หน่วง 6.5s เพื่อไม่ให้เกิน 10 requests/นาที
 		remainDay:   -1,
 		remainMin:   -1,
 	}
@@ -140,52 +140,62 @@ func hasErrors(raw json.RawMessage) bool {
 }
 
 func (c *Client) get(ctx context.Context, path string, params url.Values, out any) error {
-	if err := c.wait(ctx); err != nil {
-		return err
-	}
+	for attempt := 0; attempt < 3; attempt++ {
+		if err := c.wait(ctx); err != nil {
+			return err
+		}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
-	if err != nil {
-		return err
-	}
-	req.URL.RawQuery = params.Encode()
-	req.Header.Set("x-apisports-key", c.apiKey)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+		if err != nil {
+			return err
+		}
+		req.URL.RawQuery = params.Encode()
+		req.Header.Set("x-apisports-key", c.apiKey)
 
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("apifootball %s: %w", path, err)
-	}
-	defer resp.Body.Close()
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return fmt.Errorf("apifootball %s: %w", path, err)
+		}
 
-	c.recordQuota(resp.Header)
+		c.recordQuota(resp.Header)
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-	if err != nil {
-		return fmt.Errorf("apifootball %s: read body: %w", path, err)
-	}
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		resp.Body.Close()
+		if err != nil {
+			return fmt.Errorf("apifootball %s: read body: %w", path, err)
+		}
 
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return ErrRateLimited
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("apifootball %s: HTTP %d: %s", path, resp.StatusCode, truncate(body, 300))
-	}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			// ติด rate limit รายนาที รอ 25 วินาทีแล้วลองใหม่
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(25 * time.Second):
+				continue
+			}
+		}
 
-	var env struct {
-		Errors   json.RawMessage `json:"errors"`
-		Response json.RawMessage `json:"response"`
-	}
-	if err := json.Unmarshal(body, &env); err != nil {
-		return fmt.Errorf("apifootball %s: decode envelope: %w", path, err)
-	}
-	if hasErrors(env.Errors) {
-		return fmt.Errorf("apifootball %s: api error: %s", path, strings.TrimSpace(string(env.Errors)))
-	}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("apifootball %s: HTTP %d: %s", path, resp.StatusCode, truncate(body, 300))
+		}
 
-	if err := json.Unmarshal(env.Response, out); err != nil {
-		return fmt.Errorf("apifootball %s: decode response: %w", path, err)
+		var env struct {
+			Errors   json.RawMessage `json:"errors"`
+			Response json.RawMessage `json:"response"`
+		}
+		if err := json.Unmarshal(body, &env); err != nil {
+			return fmt.Errorf("apifootball %s: decode envelope: %w", path, err)
+		}
+		if hasErrors(env.Errors) {
+			return fmt.Errorf("apifootball %s: api error: %s", path, strings.TrimSpace(string(env.Errors)))
+		}
+
+		if err := json.Unmarshal(env.Response, out); err != nil {
+			return fmt.Errorf("apifootball %s: decode response: %w", path, err)
+		}
+		return nil
 	}
-	return nil
+	return ErrRateLimited
 }
 
 func truncate(b []byte, n int) string {

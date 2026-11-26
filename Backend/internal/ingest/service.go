@@ -307,67 +307,78 @@ func (s *Service) SyncSquadsAndCoaches(ctx context.Context) (SquadSyncResult, er
 		result.TeamsCount++
 		extID := *team.ExternalAPIID
 
-		// 1. Sync Coach
-		coach, err := s.p.Coach(ctx, extID)
-		if err != nil {
-			syncErrors = append(syncErrors, fmt.Errorf("sync coach team %s: %w", team.Name, err))
-		} else if coach != nil {
-			cExtID := coach.ExternalID
-			cRecord := models.Coach{
-				TeamID:        team.ID,
-				Name:          coach.Name,
-				Nationality:   coach.Nationality,
-				PhotoURL:      coach.PhotoURL,
-				ExternalAPIID: &cExtID,
-			}
-			var existing models.Coach
-			if err := s.db.WithContext(ctx).Where("external_api_id = ?", cExtID).First(&existing).Error; errors.Is(err, gorm.ErrRecordNotFound) {
-				if err := s.db.WithContext(ctx).Create(&cRecord).Error; err == nil {
-					result.CoachesCount++
-				}
-			} else if err == nil {
-				s.db.WithContext(ctx).Model(&existing).Updates(map[string]any{
-					"name":        cRecord.Name,
-					"nationality": cRecord.Nationality,
-					"photo_url":   cRecord.PhotoURL,
-				})
-			}
-		}
-
-		// 2. Sync Squad
-		players, err := s.p.Squad(ctx, extID)
-		if err != nil {
-			syncErrors = append(syncErrors, fmt.Errorf("sync squad team %s: %w", team.Name, err))
-		} else {
-			for _, p := range players {
-				pExtID := p.ExternalID
-				pRecord := models.Player{
+		// 1. Sync Coach (ถ้ามีอยู่แล้วให้ข้ามเพื่อประหยัดโควตา API)
+		var coachCount int64
+		s.db.WithContext(ctx).Model(&models.Coach{}).Where("team_id = ?", team.ID).Count(&coachCount)
+		if coachCount == 0 {
+			coach, err := s.p.Coach(ctx, extID)
+			if err != nil {
+				syncErrors = append(syncErrors, fmt.Errorf("sync coach team %s: %w", team.Name, err))
+			} else if coach != nil {
+				cExtID := coach.ExternalID
+				cRecord := models.Coach{
 					TeamID:        team.ID,
-					Name:          p.Name,
-					Number:        p.Number,
-					Position:      p.Position,
-					Age:           p.Age,
-					PhotoURL:      p.PhotoURL,
-					ExternalAPIID: &pExtID,
+					Name:          coach.Name,
+					Nationality:   coach.Nationality,
+					PhotoURL:      coach.PhotoURL,
+					ExternalAPIID: &cExtID,
 				}
-				var existing models.Player
-				if err := s.db.WithContext(ctx).Where("external_api_id = ?", pExtID).First(&existing).Error; errors.Is(err, gorm.ErrRecordNotFound) {
-					if err := s.db.WithContext(ctx).Create(&pRecord).Error; err == nil {
-						result.PlayersCount++
+				var existing []models.Coach
+				s.db.WithContext(ctx).Where("external_api_id = ?", cExtID).Limit(1).Find(&existing)
+				if len(existing) == 0 {
+					if err := s.db.WithContext(ctx).Create(&cRecord).Error; err == nil {
+						result.CoachesCount++
 					}
-				} else if err == nil {
-					s.db.WithContext(ctx).Model(&existing).Updates(map[string]any{
-						"name":      pRecord.Name,
-						"number":    pRecord.Number,
-						"position":  pRecord.Position,
-						"age":       pRecord.Age,
-						"photo_url": pRecord.PhotoURL,
+				} else {
+					s.db.WithContext(ctx).Model(&existing[0]).Updates(map[string]any{
+						"name":        cRecord.Name,
+						"nationality": cRecord.Nationality,
+						"photo_url":   cRecord.PhotoURL,
 					})
 				}
 			}
 		}
 
-		s.log.Info("team squad synced", "team", team.Name, "players", len(players))
+		// 2. Sync Squad (ถ้ามีรายชื่ออยู่แล้วให้ข้ามเพื่อประหยัดโควตา)
+		var playerCount int64
+		s.db.WithContext(ctx).Model(&models.Player{}).Where("team_id = ?", team.ID).Count(&playerCount)
+		if playerCount == 0 {
+			players, err := s.p.Squad(ctx, extID)
+			if err != nil {
+				syncErrors = append(syncErrors, fmt.Errorf("sync squad team %s: %w", team.Name, err))
+			} else {
+				for _, p := range players {
+					pExtID := p.ExternalID
+					pRecord := models.Player{
+						TeamID:        team.ID,
+						Name:          p.Name,
+						Number:        p.Number,
+						Position:      p.Position,
+						Age:           p.Age,
+						PhotoURL:      p.PhotoURL,
+						ExternalAPIID: &pExtID,
+					}
+					var existing []models.Player
+					s.db.WithContext(ctx).Where("external_api_id = ?", pExtID).Limit(1).Find(&existing)
+					if len(existing) == 0 {
+						if err := s.db.WithContext(ctx).Create(&pRecord).Error; err == nil {
+							result.PlayersCount++
+						}
+					} else {
+						s.db.WithContext(ctx).Model(&existing[0]).Updates(map[string]any{
+							"name":      pRecord.Name,
+							"number":    pRecord.Number,
+							"position":  pRecord.Position,
+							"age":       pRecord.Age,
+							"photo_url": pRecord.PhotoURL,
+						})
+					}
+				}
+				s.log.Info("team squad synced", "team", team.Name, "players", len(players))
+			}
+		} else {
+			s.log.Info("team squad already present, skipped", "team", team.Name, "players", playerCount)
+		}
 	}
 
 	return result, errors.Join(syncErrors...)
