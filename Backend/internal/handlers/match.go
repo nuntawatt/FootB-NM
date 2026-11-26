@@ -12,77 +12,65 @@ import (
 	"gorm.io/gorm"
 )
 
+// availableSeasons is the list of seasons the application tracks.
+// A "season" refers to the year the competition starts (e.g. 2024 = 2024/25).
+var availableSeasons = []int{2022, 2023, 2024, 2025, 2026}
+
+// MatchHandler handles HTTP requests for the /matches and /seasons resources.
 type MatchHandler struct{ db *gorm.DB }
 
+// NewMatchHandler creates a MatchHandler backed by the given database.
 func NewMatchHandler(db *gorm.DB) *MatchHandler { return &MatchHandler{db: db} }
 
+// List handles GET /matches.
+//
+// Supported query parameters:
+//
+//	league_id  UUID     filter by league
+//	status     string   "scheduled" | "live" | "finished" | "postponed"
+//	season     int      filter by season year (e.g. 2024 covers Jul 2024 - Jun 2025)
+//	year       int      filter by calendar year (e.g. 2024 covers Jan-Dec 2024)
+//	date       string   filter by a specific date (format: YYYY-MM-DD)
+//	limit      int      max results per page; default 50, max 200
+//	page       int      1-based page number; default 1
 func (h *MatchHandler) List(c fiber.Ctx) error {
-	var matches []models.Match
-	q := h.db.Preload("HomeTeam").Preload("AwayTeam").Preload("League")
+	q := h.db.
+		Preload("HomeTeam").
+		Preload("AwayTeam").
+		Preload("League")
 
-	if leagueID := c.Query("league_id"); leagueID != "" {
-		if lid, err := uuid.Parse(leagueID); err == nil {
-			q = q.Where("league_id = ?", lid)
-		}
-	}
+	q = applyMatchFilters(q, c)
 
-	if status := c.Query("status"); status != "" {
-		q = q.Where("status = ?", status)
-	}
-
-	// กรองตามฤดูกาล (เช่น season=2024 คือช่วง ส.ค. 2024 - พ.ค. 2025)
-	if seasonStr := c.Query("season"); seasonStr != "" {
-		if s, err := strconv.Atoi(seasonStr); err == nil {
-			start := time.Date(s, 7, 1, 0, 0, 0, 0, time.UTC)
-			end := time.Date(s+1, 7, 1, 0, 0, 0, 0, time.UTC)
-			q = q.Where("match_date >= ? AND match_date < ?", start, end)
-		}
-	}
-
-	// กรองตามปีปฏิทิน (เช่น year=2024)
-	if yearStr := c.Query("year"); yearStr != "" {
-		if yr, err := strconv.Atoi(yearStr); err == nil {
-			start := time.Date(yr, 1, 1, 0, 0, 0, 0, time.UTC)
-			end := time.Date(yr+1, 1, 1, 0, 0, 0, 0, time.UTC)
-			q = q.Where("match_date >= ? AND match_date < ?", start, end)
-		}
-	}
-
-	if dateStr := c.Query("date"); dateStr != "" {
-		if t, err := time.Parse("2006-01-02", dateStr); err == nil {
-			start := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-			end := start.Add(24 * time.Hour)
-			q = q.Where("match_date >= ? AND match_date < ?", start, end)
-		}
-	}
-
-	limit := 50
-	if l := c.Query("limit"); l != "" {
-		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 200 {
-			limit = n
-		}
-	}
+	limit := parseLimitParam(c.Query("limit"), 50, 200)
 	q = q.Limit(limit)
 
-	if pageS := c.Query("page"); pageS != "" {
-		if p, err := strconv.Atoi(pageS); err == nil && p > 1 {
-			q = q.Offset((p - 1) * limit)
-		}
+	if page, err := strconv.Atoi(c.Query("page")); err == nil && page > 1 {
+		q = q.Offset((page - 1) * limit)
 	}
 
+	var matches []models.Match
 	if err := q.Order("match_date desc").Find(&matches).Error; err != nil {
 		return err
 	}
 	return c.JSON(matches)
 }
 
+// Get handles GET /matches/:id.
+// Returns a single match with its related league, home team, and away team.
 func (h *MatchHandler) Get(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid id")
 	}
+
 	var match models.Match
-	if err := h.db.Preload("HomeTeam").Preload("AwayTeam").Preload("League").First(&match, "id = ?", id).Error; err != nil {
+	err = h.db.
+		Preload("HomeTeam").
+		Preload("AwayTeam").
+		Preload("League").
+		First(&match, "id = ?", id).Error
+
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fiber.NewError(fiber.StatusNotFound, "match not found")
 		}
@@ -91,24 +79,103 @@ func (h *MatchHandler) Get(c fiber.Ctx) error {
 	return c.JSON(match)
 }
 
+// Seasons handles GET /seasons.
+// Returns each tracked season with its label and the number of stored matches.
 func (h *MatchHandler) Seasons(c fiber.Ctx) error {
 	type SeasonItem struct {
 		Season       int    `json:"season"`
 		Label        string `json:"label"`
 		MatchesCount int64  `json:"matches_count"`
 	}
-	var results []SeasonItem
-	years := []int{2022, 2023, 2024, 2025, 2026}
-	for _, s := range years {
-		start := time.Date(s, 7, 1, 0, 0, 0, 0, time.UTC)
-		end := time.Date(s+1, 7, 1, 0, 0, 0, 0, time.UTC)
+
+	results := make([]SeasonItem, 0, len(availableSeasons))
+
+	for _, year := range availableSeasons {
+		start, end := seasonDateRange(year)
+
 		var count int64
-		h.db.Model(&models.Match{}).Where("match_date >= ? AND match_date < ?", start, end).Count(&count)
+		h.db.Model(&models.Match{}).
+			Where("match_date >= ? AND match_date < ?", start, end).
+			Count(&count)
+
 		results = append(results, SeasonItem{
-			Season:       s,
-			Label:        strconv.Itoa(s) + "/" + strconv.Itoa(s+1),
+			Season:       year,
+			Label:        strconv.Itoa(year) + "/" + strconv.Itoa(year+1),
 			MatchesCount: count,
 		})
 	}
+
 	return c.JSON(results)
+}
+
+// ----------------------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------------------
+
+// applyMatchFilters chains WHERE clauses onto q based on query parameters.
+func applyMatchFilters(q *gorm.DB, c fiber.Ctx) *gorm.DB {
+	// Filter by league UUID.
+	if raw := c.Query("league_id"); raw != "" {
+		if lid, err := uuid.Parse(raw); err == nil {
+			q = q.Where("league_id = ?", lid)
+		}
+	}
+
+	// Filter by match status.
+	if status := c.Query("status"); status != "" {
+		q = q.Where("status = ?", status)
+	}
+
+	// Filter by season year: a "season" window runs from July 1 of the given
+	// year to July 1 of the following year (e.g. season=2024 -> Aug 2024-May 2025).
+	if raw := c.Query("season"); raw != "" {
+		if year, err := strconv.Atoi(raw); err == nil {
+			start, end := seasonDateRange(year)
+			q = q.Where("match_date >= ? AND match_date < ?", start, end)
+		}
+	}
+
+	// Filter by calendar year (January 1 to December 31).
+	if raw := c.Query("year"); raw != "" {
+		if year, err := strconv.Atoi(raw); err == nil {
+			start := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+			end := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
+			q = q.Where("match_date >= ? AND match_date < ?", start, end)
+		}
+	}
+
+	// Filter by exact date (00:00:00 to 23:59:59 UTC).
+	if raw := c.Query("date"); raw != "" {
+		if t, err := time.Parse("2006-01-02", raw); err == nil {
+			start := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+			end := start.Add(24 * time.Hour)
+			q = q.Where("match_date >= ? AND match_date < ?", start, end)
+		}
+	}
+
+	return q
+}
+
+// seasonDateRange returns the start (inclusive) and end (exclusive) timestamps
+// for a given season year. A season runs from July 1 to June 30 the next year.
+func seasonDateRange(year int) (start, end time.Time) {
+	start = time.Date(year, time.July, 1, 0, 0, 0, 0, time.UTC)
+	end = time.Date(year+1, time.July, 1, 0, 0, 0, 0, time.UTC)
+	return
+}
+
+// parseLimitParam parses a string into a page-size limit clamped to [1, max].
+// Returns defaultVal when the string is empty or invalid.
+func parseLimitParam(raw string, defaultVal, max int) int {
+	if raw == "" {
+		return defaultVal
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return defaultVal
+	}
+	if n > max {
+		return max
+	}
+	return n
 }
