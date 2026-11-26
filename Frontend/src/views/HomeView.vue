@@ -50,6 +50,17 @@
       <div v-else class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
         ไม่พบข้อมูลการแข่งขันสำหรับ {{ selectedLeague.name }}
       </div>
+
+      <!-- Thai League Widgets: Standings Top 5 + Top Scorers -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <MiniStandingsWidget />
+        <TopScorersWidget />
+      </div>
+
+      <!-- Thai League News Grid -->
+      <div class="pt-2">
+        <NewsGrid />
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -68,6 +79,9 @@ import MainLayout from '@/components/layout/MainLayout.vue'
 import HeroHighlight from '@/components/home/HeroHighlight.vue'
 import DateNavigator from '@/components/fixtures/DateNavigator.vue'
 import FixtureGroup from '@/components/fixtures/FixtureGroup.vue'
+import MiniStandingsWidget from '@/components/home/MiniStandingsWidget.vue'
+import TopScorersWidget from '@/components/home/TopScorersWidget.vue'
+import NewsGrid from '@/components/home/NewsGrid.vue'
 
 const leagueStore = useLeagueStore()
 const seasonStore = useSeasonStore()
@@ -110,7 +124,7 @@ async function loadMatches() {
       limit: 20,
     })
   } catch {
-    error.value = 'ไม่สามารถเชื่อมต่อ Backend API ได้ กรุณาตรวจสอบว่า Backend กำลังทำงานอยู่ (http://localhost:3000)'
+    error.value = 'ไม่สามารถเชื่อมต่อ Backend API ได้ กรุณาตรวจสอบว่า Backend กำลังทำงานอยู่'
   } finally {
     loading.value = false
   }

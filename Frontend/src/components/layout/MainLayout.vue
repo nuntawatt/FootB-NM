@@ -1,6 +1,7 @@
 <template>
   <div class="min-h-screen flex flex-col transition-colors duration-200" :class="isDark ? 'bg-sport-bg text-white' : 'bg-gray-100 text-gray-900'">
     <Navbar />
+    <ClubStrip />
 
     <!-- Optional Hero slot above sidebar + content -->
     <slot name="hero" />
@@ -14,6 +15,8 @@
         </div>
       </div>
     </main>
+
+    <Footer />
   </div>
 </template>
 
@@ -21,7 +24,9 @@
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import Navbar from './Navbar.vue'
+import ClubStrip from './ClubStrip.vue'
 import LeagueSidebar from './LeagueSidebar.vue'
+import Footer from './Footer.vue'
 
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
