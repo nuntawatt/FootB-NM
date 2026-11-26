@@ -14,14 +14,6 @@ type LeagueHandler struct{ db *gorm.DB }
 
 func NewLeagueHandler(db *gorm.DB) *LeagueHandler { return &LeagueHandler{db: db} }
 
-type leagueInput struct {
-	Name          string  `json:"name"`
-	ShortName     string  `json:"short_name"`
-	Country       string  `json:"country"`
-	LogoURL       string  `json:"logo_url"`
-	ExternalAPIID *string `json:"external_api_id"`
-}
-
 // หา league จาก :id ใช้ร่วมกันหลาย endpoint
 func (h *LeagueHandler) find(c fiber.Ctx) (*models.League, error) {
 	id, err := uuid.Parse(c.Params("id"))
@@ -52,53 +44,4 @@ func (h *LeagueHandler) Get(c fiber.Ctx) error {
 		return err
 	}
 	return c.JSON(league)
-}
-
-func (h *LeagueHandler) Create(c fiber.Ctx) error {
-	var in leagueInput
-	if err := c.Bind().Body(&in); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid body")
-	}
-	if in.Name == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "name is required")
-	}
-	league := models.League{
-		Name: in.Name, ShortName: in.ShortName, Country: in.Country,
-		LogoURL: in.LogoURL, ExternalAPIID: in.ExternalAPIID,
-	}
-	if err := h.db.Create(&league).Error; err != nil {
-		return err
-	}
-	return c.Status(fiber.StatusCreated).JSON(league)
-}
-
-func (h *LeagueHandler) Update(c fiber.Ctx) error {
-	league, err := h.find(c)
-	if err != nil {
-		return err
-	}
-	var in leagueInput
-	if err := c.Bind().Body(&in); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid body")
-	}
-	if in.Name == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "name is required")
-	}
-	league.Name, league.ShortName, league.Country = in.Name, in.ShortName, in.Country
-	league.LogoURL, league.ExternalAPIID = in.LogoURL, in.ExternalAPIID
-	if err := h.db.Save(league).Error; err != nil {
-		return err
-	}
-	return c.JSON(league)
-}
-
-func (h *LeagueHandler) Delete(c fiber.Ctx) error {
-	league, err := h.find(c)
-	if err != nil {
-		return err
-	}
-	if err := h.db.Delete(league).Error; err != nil { // soft delete
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
 }

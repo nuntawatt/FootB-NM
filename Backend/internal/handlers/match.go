@@ -30,6 +30,24 @@ func (h *MatchHandler) List(c fiber.Ctx) error {
 		q = q.Where("status = ?", status)
 	}
 
+	// กรองตามฤดูกาล (เช่น season=2024 คือช่วง ส.ค. 2024 - พ.ค. 2025)
+	if seasonStr := c.Query("season"); seasonStr != "" {
+		if s, err := strconv.Atoi(seasonStr); err == nil {
+			start := time.Date(s, 7, 1, 0, 0, 0, 0, time.UTC)
+			end := time.Date(s+1, 7, 1, 0, 0, 0, 0, time.UTC)
+			q = q.Where("match_date >= ? AND match_date < ?", start, end)
+		}
+	}
+
+	// กรองตามปีปฏิทิน (เช่น year=2024)
+	if yearStr := c.Query("year"); yearStr != "" {
+		if yr, err := strconv.Atoi(yearStr); err == nil {
+			start := time.Date(yr, 1, 1, 0, 0, 0, 0, time.UTC)
+			end := time.Date(yr+1, 1, 1, 0, 0, 0, 0, time.UTC)
+			q = q.Where("match_date >= ? AND match_date < ?", start, end)
+		}
+	}
+
 	if dateStr := c.Query("date"); dateStr != "" {
 		if t, err := time.Parse("2006-01-02", dateStr); err == nil {
 			start := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
@@ -71,4 +89,26 @@ func (h *MatchHandler) Get(c fiber.Ctx) error {
 		return err
 	}
 	return c.JSON(match)
+}
+
+func (h *MatchHandler) Seasons(c fiber.Ctx) error {
+	type SeasonItem struct {
+		Season       int    `json:"season"`
+		Label        string `json:"label"`
+		MatchesCount int64  `json:"matches_count"`
+	}
+	var results []SeasonItem
+	years := []int{2022, 2023, 2024, 2025, 2026}
+	for _, s := range years {
+		start := time.Date(s, 7, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(s+1, 7, 1, 0, 0, 0, 0, time.UTC)
+		var count int64
+		h.db.Model(&models.Match{}).Where("match_date >= ? AND match_date < ?", start, end).Count(&count)
+		results = append(results, SeasonItem{
+			Season:       s,
+			Label:        strconv.Itoa(s) + "/" + strconv.Itoa(s+1),
+			MatchesCount: count,
+		})
+	}
+	return c.JSON(results)
 }

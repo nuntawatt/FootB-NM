@@ -45,7 +45,7 @@ func main() {
 
 	api := app.Group("/api/v1")
 
-	// health check
+	// 1. Health check
 	api.Get("/health", func(c fiber.Ctx) error {
 		sqlDB, err := db.DB()
 		if err != nil || sqlDB.Ping() != nil {
@@ -54,23 +54,30 @@ func main() {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
+	// 2. Seasons (สำหรับ Dropdown เลือกปี)
+	matches := handlers.NewMatchHandler(db)
+	api.Get("/seasons", matches.Seasons)
+
+	// 3. Leagues (อ่านข้อมูลลีก)
 	leagues := handlers.NewLeagueHandler(db)
 	lg := api.Group("/leagues")
 	lg.Get("/", leagues.List)
-	lg.Post("/", leagues.Create)
 	lg.Get("/:id", leagues.Get)
-	lg.Put("/:id", leagues.Update)
-	lg.Delete("/:id", leagues.Delete)
 
+	// 4. Teams (ข้อมูลทีมและสโมสร)
 	teams := handlers.NewTeamHandler(db)
 	tg := api.Group("/teams")
 	tg.Get("/", teams.List)
 	tg.Get("/:id", teams.Get)
 
-	matches := handlers.NewMatchHandler(db)
+	// 5. Matches (ตารางแข่งและผลบอล พร้อม filter ปี/วัน/สถานะ)
 	mg := api.Group("/matches")
 	mg.Get("/", matches.List)
 	mg.Get("/:id", matches.Get)
+
+	// 6. Sync on-demand (สั่งดูดข้อมูลจาก API-Football ลง Database)
+	syncHandler := handlers.NewSyncHandler(db, cfg)
+	api.Post("/sync/fixtures", syncHandler.SyncFixtures)
 
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
