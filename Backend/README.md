@@ -26,13 +26,13 @@ Content-Type: `application/json`
 | | `GET` | `/matches/:id` | Public | ข้อมูลแมตช์ตาม ID |
 | | `GET` | `/matches/:id/lineups` | Public | รายชื่อ 11 ตัวจริง แผนการเล่น ตัวสำรอง |
 | | `GET` | `/matches/:id/venue` | Public | ข้อมูลสนาม เมือง ความจุ ช่องถ่ายทอดสด |
-| **6. Standings** | `GET` | `/standings` | Public | ตารางคะแนนคำนวณจากผลแข่งจริงใน DB |
+| **6. Standings** | `GET` | `/standings` | Public | ตารางคะแนนคำนวณจากผลแข่งจริงใน DB มีการใช้ Redis |
 | **7. Favorites** | `GET` | `/favorites` | Optional Auth | รายชื่อทีมโปรดของผู้ใช้ |
 | | `POST` | `/favorites/:team_id` | Optional Auth | เพิ่มทีมเข้าทีมโปรด |
 | | `DELETE` | `/favorites/:team_id` | Optional Auth | ลบทีมออกจากทีมโปรด |
 | **8. Highlights** | `GET` | `/heroes` | Public | ข่าวเด่นและแบนเนอร์ไฮไลท์หน้าแรก |
 | **9. System** | `GET` | `/health` | Public | ตรวจสอบสถานะ Server และ Database |
-| **10. Sync** | `POST` | `/sync/fixtures` | Public | ดึงแมตช์จาก API-Football บันทึกลง DB |
+| **10. Sync** | `POST` | `/sync/fixtures` | Public | ดึงแมตช์จาก API-Football บันทึกลง DB และมีใช้ Redis |
 | | `POST` | `/sync/squads` | Public | ดึงโค้ชและนักเตะ 20 ทีมลง DB อัตโนมัติ |
 
 ---
