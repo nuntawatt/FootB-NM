@@ -16,6 +16,7 @@ type Config struct {
 	APIFootballKey     string
 	APIFootballBaseURL string
 	Season             int
+	JWTSecret          string
 }
 
 func Load() (*Config, error) {
@@ -26,6 +27,7 @@ func Load() (*Config, error) {
 		DatabaseURL:        os.Getenv("DATABASE_URL"),
 		APIFootballKey:     os.Getenv("FOOTBALL_API_KEY"),
 		APIFootballBaseURL: getenv("FOOTBALL_API_BASE_URL", "https://v3.football.api-sports.io"),
+		JWTSecret:          getenv("JWT_SECRET", "football-jwt-secret-key-super-secure"),
 	}
 
 	if cfg.DatabaseURL == "" {

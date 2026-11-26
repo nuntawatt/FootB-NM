@@ -33,16 +33,7 @@ func (h *ExtraHandler) TeamForm(c fiber.Ctx) error {
 		return err
 	}
 
-	type FormMatch struct {
-		MatchID  uuid.UUID `json:"match_id"`
-		Date     string    `json:"date"`
-		Opponent string    `json:"opponent"`
-		Score    string    `json:"score"`
-		Result   string    `json:"result"` // "W", "D", "L"
-		IsHome   bool      `json:"is_home"`
-	}
-
-	var forms []FormMatch
+	var forms []models.FormMatch
 	for _, m := range matches {
 		if m.HomeScore == nil || m.AwayScore == nil {
 			continue
@@ -72,7 +63,7 @@ func (h *ExtraHandler) TeamForm(c fiber.Ctx) error {
 			}
 		}
 
-		forms = append(forms, FormMatch{
+		forms = append(forms, models.FormMatch{
 			MatchID:  m.ID,
 			Date:     m.MatchDate.Format("2006-01-02"),
 			Opponent: oppName,

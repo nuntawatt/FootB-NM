@@ -7,6 +7,7 @@ import (
 	"football/internal/config"
 	"football/internal/database"
 	"football/internal/handlers"
+	"football/internal/middleware"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -83,9 +84,24 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	standings := handlers.NewStandingsHandler(db)
 	api.Get("/standings", standings.Get)
 
-	// Favorites (ทีมโปรด)
+	// Auth & User Profile
+	auth := handlers.NewAuthHandler(db, cfg)
+	protected := middleware.Protected(cfg.JWTSecret)
+	optAuth := middleware.OptionalAuth(cfg.JWTSecret)
+
+	api.Post("/register", auth.Register)
+	api.Post("/login", auth.Login)
+	api.Post("/auth/register", auth.Register)
+	api.Post("/auth/login", auth.Login)
+
+	api.Get("/profile", protected, auth.Profile)
+	api.Put("/profile", protected, auth.UpdateProfile)
+	api.Get("/auth/profile", protected, auth.Profile)
+	api.Put("/auth/profile", protected, auth.UpdateProfile)
+
+	// Favorites (ทีมโปรด - ดึง user จาก JWT อัตโนมัติ หรือ fallback เป็น X-User-ID)
 	favorites := handlers.NewFavoriteHandler(db)
-	fav := api.Group("/favorites")
+	fav := api.Group("/favorites", optAuth)
 	fav.Get("/", favorites.List)
 	fav.Post("/:team_id", favorites.Add)
 	fav.Delete("/:team_id", favorites.Remove)

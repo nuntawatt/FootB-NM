@@ -41,3 +41,13 @@ type HeroHighlight struct {
 	MatchID     *uuid.UUID `json:"match_id,omitempty"`
 	RedirectURL string     `json:"redirect_url,omitempty"`
 }
+
+type FormMatch struct {
+	MatchID  uuid.UUID `json:"match_id"`
+	Date     string    `json:"date"`
+	Opponent string    `json:"opponent"`
+	Score    string    `json:"score"`
+	Result   string    `json:"result"` // "W", "D", "L"
+	IsHome   bool      `json:"is_home"`
+}
+

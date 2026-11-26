@@ -10,6 +10,10 @@ Content-Type: `application/json`
 
 | หมวดหมู่ | Method | Endpoint | หน้าที่ |
 |:---|:---:|:---|:---|
+| **Auth** | `POST` | `/register` | สมัครสมาชิกใหม่ (คืน JWT Token) |
+| | `POST` | `/login` | เข้าสู่ระบบ (คืน JWT Token) |
+| | `GET` | `/profile` | ดูโปรไฟล์ผู้ใช้ปัจจุบัน (ใช้ Bearer Token) |
+| | `PUT` | `/profile` | แก้ไขข้อมูลโปรไฟล์ |
 | **System** | `GET` | `/health` | ตรวจสอบสถานะ Server และ Database |
 | **Seasons** | `GET` | `/seasons` | รายการปี/ฤดูกาลทั้งหมด (2022-2026) สำหรับ Dropdown |
 | **Leagues** | `GET` | `/leagues` | รายชื่อลีกและบอลถ้วยทั้งหมด |
@@ -33,7 +37,127 @@ Content-Type: `application/json`
 
 ---
 
-## 1. System
+## 1. Authentication & Profile (ระบบสมาชิกและเข้าสู่ระบบ)
+
+### POST /register (หรือ /auth/register)
+สมัครสมาชิกใหม่ ระบบจะทำการแฮชรหัสผ่านด้วย bcrypt และคืนค่า JWT Token พร้อมข้อมูลผู้ใช้ทันที
+
+- **Headers:** `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "username": "somchai",
+  "email": "somchai@example.com",
+  "password": "password123",
+  "avatar_url": ""   // optional
+}
+```
+- **curl:**
+```bash
+curl -i -X POST http://localhost:3000/api/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"somchai","email":"somchai@example.com","password":"password123"}'
+```
+- **Response (201 Created):**
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "61e3d51a-63b5-4890-9cc3-8260226b60a4",
+    "username": "somchai",
+    "email": "somchai@example.com",
+    "avatar_url": "https://ui-avatars.com/api/?name=somchai&background=0F172A&color=38BDF8&size=256",
+    "role": "user",
+    "created_at": "2026-11-26T15:26:47.212+07:00"
+  }
+}
+```
+
+---
+
+### POST /login (หรือ /auth/login)
+เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้
+
+- **Headers:** `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "email": "somchai@example.com",  // หรือ username
+  "password": "password123"
+}
+```
+- **curl:**
+```bash
+curl -i -X POST http://localhost:3000/api/v1/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"somchai@example.com","password":"password123"}'
+```
+- **Response (200 OK):**
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "61e3d51a-63b5-4890-9cc3-8260226b60a4",
+    "username": "somchai",
+    "email": "somchai@example.com",
+    "avatar_url": "https://ui-avatars.com/api/?name=somchai&background=0F172A&color=38BDF8&size=256",
+    "role": "user",
+    "created_at": "2026-11-26T15:26:47.212+07:00"
+  }
+}
+```
+
+---
+
+### GET /profile
+ดึงข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่ (ต้องแนบ Bearer Token)
+
+- **Headers:** `Authorization: Bearer <TOKEN>`
+- **curl:**
+```bash
+curl -i http://localhost:3000/api/v1/profile \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+- **Response (200 OK):**
+```json
+{
+  "id": "61e3d51a-63b5-4890-9cc3-8260226b60a4",
+  "username": "somchai",
+  "email": "somchai@example.com",
+  "avatar_url": "https://ui-avatars.com/api/?name=somchai&background=0F172A&color=38BDF8&size=256",
+  "role": "user",
+  "created_at": "2026-11-26T15:26:47.212+07:00"
+}
+```
+
+---
+
+### PUT /profile
+แก้ไขข้อมูลโปรไฟล์ (ชื่อผู้ใช้, รูปโปรไฟล์)
+
+- **Headers:** 
+  - `Authorization: Bearer <TOKEN>`
+  - `Content-Type: application/json`
+- **Request Body:**
+```json
+{
+  "username": "somchai_pro",
+  "avatar_url": "https://example.com/new-avatar.png"
+}
+```
+- **curl:**
+```bash
+curl -i -X PUT http://localhost:3000/api/v1/profile \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{"username":"somchai_pro"}'
+```
+
+---
+
+## 2. System
 
 ### GET /health
 ตรวจสอบสถานะการทำงานของ Server และ Database
@@ -51,7 +175,7 @@ curl -i http://localhost:3000/api/v1/health
 
 ---
 
-## 2. Seasons (ปี / ฤดูกาล)
+## 3. Seasons (ปี / ฤดูกาล)
 
 ### GET /seasons
 ดึงรายชื่อปี/ฤดูกาลทั้งหมด (2022 ถึง 2026) พร้อมจำนวนแมตช์ในระบบ สำหรับนำไปทำ Dropdown เลือกปีใน Frontend
@@ -93,7 +217,7 @@ curl -i http://localhost:3000/api/v1/seasons
 
 ---
 
-## 3. Leagues (ลีกฟุตบอล)
+## 4. Leagues (ลีกฟุตบอล)
 
 ### GET /leagues
 ดึงรายชื่อลีกและบอลถ้วยทั้งหมด
@@ -129,7 +253,7 @@ curl -i http://localhost:3000/api/v1/leagues/0aab480b-9e10-4fea-a6fc-884160e684d
 
 ---
 
-## 4. Teams (สโมสร/ทีมฟุตบอล)
+## 5. Teams (สโมสร/ทีมฟุตบอล)
 
 ### GET /teams
 ดึงรายชื่อทีมฟุตบอลทั้งหมด
@@ -239,7 +363,7 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/
 
 ---
 
-## 5. Matches (ตารางแข่งและผลบอล)
+## 6. Matches (ตารางแข่งและผลบอล)
 
 ### GET /matches
 ดึงรายการแข่งขันและผลบอล พร้อมข้อมูลทีมเหย้า-เยือน โลโก้ สกอร์ นาที และสถานะ
@@ -501,14 +625,4 @@ go run ./cmd/sync fixtures -season 2022-2024
 
 # 3. ดูรายการลีกที่ผูกไว้
 go run ./cmd/sync leagues
-```
-
----
-
-## 10. Database Migration
-
-หากต้องการสร้างตาราง `coaches` และ `players` ใน PostgreSQL:
-
-```bash
-PGPASSWORD=nuntawat838 psql -h localhost -U postgres -d football -f migrations/000003_create_coaches_and_players.up.sql
 ```

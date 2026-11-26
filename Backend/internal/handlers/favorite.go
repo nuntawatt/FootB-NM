@@ -17,6 +17,11 @@ func NewFavoriteHandler(db *gorm.DB) *FavoriteHandler {
 }
 
 func (h *FavoriteHandler) getEffectiveUserID(c fiber.Ctx) uuid.UUID {
+	if val := c.Locals("userID"); val != nil {
+		if uid, ok := val.(uuid.UUID); ok {
+			return uid
+		}
+	}
 	if headerVal := c.Get("X-User-ID"); headerVal != "" {
 		if uid, err := uuid.Parse(headerVal); err == nil {
 			return uid

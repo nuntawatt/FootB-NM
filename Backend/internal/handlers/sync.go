@@ -6,6 +6,7 @@ import (
 
 	"football/internal/config"
 	"football/internal/ingest"
+	"football/internal/models"
 	"football/internal/provider/apifootball"
 
 	"github.com/gofiber/fiber/v3"
@@ -21,15 +22,9 @@ func NewSyncHandler(db *gorm.DB, cfg *config.Config) *SyncHandler {
 	return &SyncHandler{db: db, cfg: cfg}
 }
 
-type syncRequest struct {
-	Season int    `json:"season"`
-	From   string `json:"from,omitempty"`
-	To     string `json:"to,omitempty"`
-}
-
 // SyncFixtures ดึงข้อมูลจาก API-Football ลงฐานข้อมูลตามฤดูกาลที่ระบุ
 func (h *SyncHandler) SyncFixtures(c fiber.Ctx) error {
-	var req syncRequest
+	var req models.SyncRequest
 	_ = c.Bind().Body(&req)
 
 	if req.Season == 0 {
