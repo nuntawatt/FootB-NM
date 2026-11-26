@@ -69,6 +69,32 @@ func (h *SyncHandler) SyncFixtures(c fiber.Ctx) error {
 	})
 }
 
+// SyncSquads ดึงโค้ชและนักเตะของทุกทีมลง Database
+func (h *SyncHandler) SyncSquads(c fiber.Ctx) error {
+	client := apifootball.New(
+		h.cfg.APIFootballKey,
+		apifootball.WithBaseURL(h.cfg.APIFootballBaseURL),
+	)
+	svc := ingest.New(h.db, client, slog.Default())
+
+	res, err := svc.SyncSquadsAndCoaches(c.Context())
+	if err != nil && res.CoachesCount == 0 && res.PlayersCount == 0 {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	dayQuota, minQuota := client.Quota()
+	return c.JSON(fiber.Map{
+		"status":          "success",
+		"teams_checked":   res.TeamsCount,
+		"coaches_synced":  res.CoachesCount,
+		"players_synced":  res.PlayersCount,
+		"quota_remaining": fiber.Map{
+			"day":    dayQuota,
+			"minute": minQuota,
+		},
+	})
+}
+
 func parseDateRange(fromStr, toStr string) (from, to time.Time) {
 	loc, _ := time.LoadLocation(apifootball.DefaultTimezone)
 

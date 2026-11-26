@@ -44,7 +44,8 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `usage:
 	sync leagues  [-country Thailand]
 	sync link     -name "Thai League 1" -id 296
-	sync fixtures [-season 2024 หรือ 2022-2026] [-from YYYY-MM-DD] [-to YYYY-MM-DD]`)
+	sync fixtures [-season 2024 หรือ 2022-2026] [-from YYYY-MM-DD] [-to YYYY-MM-DD]
+	sync squads   ดูดข้อมูลโค้ชและนักเตะของทุกทีมลงฐานข้อมูล`)
 }
 
 func run(ctx context.Context, cmd string, args []string) error {
@@ -64,11 +65,33 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return runLink(cfg, args)
 	case "fixtures":
 		return runFixtures(ctx, cfg, client, args)
+	case "squads":
+		return runSquads(ctx, cfg, client)
 	default:
 		usage()
 		return fmt.Errorf("unknown command %q", cmd)
 	}
 }
+
+func runSquads(ctx context.Context, cfg *config.Config, c *apifootball.Client) error {
+	db, err := database.Connect(cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	svc := ingest.New(db, c, slog.Default())
+
+	fmt.Println("===> กำลังซิงก์ข้อมูลโค้ชและรายชื่อนักเตะจาก API-Football...")
+	res, err := svc.SyncSquadsAndCoaches(ctx)
+	if err != nil {
+		fmt.Printf("warning: %v\n", err)
+	}
+
+	fmt.Printf("\nสรุปผล: ทีมที่ตรวจสอบ %d ทีม | บันทึกโค้ชใหม่ %d คน | บันทึกนักเตะใหม่ %d คน\n",
+		res.TeamsCount, res.CoachesCount, res.PlayersCount)
+	printQuota(c)
+	return nil
+}
+
 
 func runLeagues(ctx context.Context, c *apifootball.Client, args []string) error {
 	fs := flag.NewFlagSet("leagues", flag.ContinueOnError)

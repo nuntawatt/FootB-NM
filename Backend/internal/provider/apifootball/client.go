@@ -380,3 +380,67 @@ func (c *Client) LiveFixtures(ctx context.Context, leagueExternalIDs []string) (
 	}
 	return toDomainFixtures(items)
 }
+
+type coachItem struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Nationality string `json:"nationality"`
+	Photo       string `json:"photo"`
+}
+
+type squadItem struct {
+	Players []struct {
+		ID       int    `json:"id"`
+		Name     string `json:"name"`
+		Age      *int   `json:"age"`
+		Number   *int   `json:"number"`
+		Position string `json:"position"`
+		Photo    string `json:"photo"`
+	} `json:"players"`
+}
+
+func (c *Client) Coach(ctx context.Context, teamExtID string) (*provider.Coach, error) {
+	q := url.Values{}
+	q.Set("team", teamExtID)
+
+	var items []coachItem
+	if err := c.get(ctx, "/coachs", q, &items); err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	first := items[0]
+	return &provider.Coach{
+		ExternalID:  strconv.Itoa(first.ID),
+		Name:        first.Name,
+		Nationality: first.Nationality,
+		PhotoURL:    first.Photo,
+	}, nil
+}
+
+func (c *Client) Squad(ctx context.Context, teamExtID string) ([]provider.Player, error) {
+	q := url.Values{}
+	q.Set("team", teamExtID)
+
+	var items []squadItem
+	if err := c.get(ctx, "/players/squads", q, &items); err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	out := make([]provider.Player, 0, len(items[0].Players))
+	for _, p := range items[0].Players {
+		out = append(out, provider.Player{
+			ExternalID: strconv.Itoa(p.ID),
+			Name:       p.Name,
+			Number:     p.Number,
+			Position:   p.Position,
+			Age:        p.Age,
+			PhotoURL:   p.Photo,
+		})
+	}
+	return out, nil
+}
+

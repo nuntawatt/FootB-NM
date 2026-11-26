@@ -283,3 +283,93 @@ func toInt16(v *int) *int16 {
 	n := int16(*v)
 	return &n
 }
+
+type SquadSyncResult struct {
+	TeamsCount   int
+	CoachesCount int
+	PlayersCount int
+}
+
+// SyncSquadsAndCoaches ดึงโค้ชและนักเตะของทุกทีมที่มี external_api_id ลง Database
+func (s *Service) SyncSquadsAndCoaches(ctx context.Context) (SquadSyncResult, error) {
+	var result SquadSyncResult
+	var teams []models.Team
+
+	if err := s.db.WithContext(ctx).Where("external_api_id IS NOT NULL").Find(&teams).Error; err != nil {
+		return result, fmt.Errorf("load teams: %w", err)
+	}
+
+	var syncErrors []error
+	for _, team := range teams {
+		if team.ExternalAPIID == nil || *team.ExternalAPIID == "" {
+			continue
+		}
+		result.TeamsCount++
+		extID := *team.ExternalAPIID
+
+		// 1. Sync Coach
+		coach, err := s.p.Coach(ctx, extID)
+		if err != nil {
+			syncErrors = append(syncErrors, fmt.Errorf("sync coach team %s: %w", team.Name, err))
+		} else if coach != nil {
+			cExtID := coach.ExternalID
+			cRecord := models.Coach{
+				TeamID:        team.ID,
+				Name:          coach.Name,
+				Nationality:   coach.Nationality,
+				PhotoURL:      coach.PhotoURL,
+				ExternalAPIID: &cExtID,
+			}
+			var existing models.Coach
+			if err := s.db.WithContext(ctx).Where("external_api_id = ?", cExtID).First(&existing).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+				if err := s.db.WithContext(ctx).Create(&cRecord).Error; err == nil {
+					result.CoachesCount++
+				}
+			} else if err == nil {
+				s.db.WithContext(ctx).Model(&existing).Updates(map[string]any{
+					"name":        cRecord.Name,
+					"nationality": cRecord.Nationality,
+					"photo_url":   cRecord.PhotoURL,
+				})
+			}
+		}
+
+		// 2. Sync Squad
+		players, err := s.p.Squad(ctx, extID)
+		if err != nil {
+			syncErrors = append(syncErrors, fmt.Errorf("sync squad team %s: %w", team.Name, err))
+		} else {
+			for _, p := range players {
+				pExtID := p.ExternalID
+				pRecord := models.Player{
+					TeamID:        team.ID,
+					Name:          p.Name,
+					Number:        p.Number,
+					Position:      p.Position,
+					Age:           p.Age,
+					PhotoURL:      p.PhotoURL,
+					ExternalAPIID: &pExtID,
+				}
+				var existing models.Player
+				if err := s.db.WithContext(ctx).Where("external_api_id = ?", pExtID).First(&existing).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+					if err := s.db.WithContext(ctx).Create(&pRecord).Error; err == nil {
+						result.PlayersCount++
+					}
+				} else if err == nil {
+					s.db.WithContext(ctx).Model(&existing).Updates(map[string]any{
+						"name":      pRecord.Name,
+						"number":    pRecord.Number,
+						"position":  pRecord.Position,
+						"age":       pRecord.Age,
+						"photo_url": pRecord.PhotoURL,
+					})
+				}
+			}
+		}
+
+		s.log.Info("team squad synced", "team", team.Name, "players", len(players))
+	}
+
+	return result, errors.Join(syncErrors...)
+}
+

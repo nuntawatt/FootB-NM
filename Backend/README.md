@@ -16,9 +16,20 @@ Content-Type: `application/json`
 | | `GET` | `/leagues/:id` | ข้อมูลลีกตาม ID |
 | **Teams** | `GET` | `/teams` | รายชื่อทีมและสโมสรทั้งหมด (รองรับ filter ตามลีก) |
 | | `GET` | `/teams/:id` | ข้อมูลทีมตาม ID |
+| | `GET` | `/teams/:id/form` | ผลงาน 5 นัดล่าสุดของทีม (W/D/L) |
+| | `GET` | `/teams/:id/coach` | ข้อมูลโค้ชของทีม |
+| | `GET` | `/teams/:id/squad` | รายชื่อนักเตะทั้งหมดของทีม |
 | **Matches** | `GET` | `/matches` | ตารางแข่งและผลบอล (รองรับ filter ปี/ฤดูกาล/สถานะ/วัน) |
 | | `GET` | `/matches/:id` | ข้อมูลแมตช์ตาม ID |
-| **Sync** | `POST` | `/sync/fixtures` | สั่งดึงข้อมูลจาก API-Football บันทึกลง Database ทันที |
+| | `GET` | `/matches/:id/lineups` | 11 ตัวจริงและแผนการเล่น |
+| | `GET` | `/matches/:id/venue` | ข้อมูลสนามและช่องถ่ายทอดสด |
+| **Standings** | `GET` | `/standings` | ตารางคะแนนคำนวณจากผลแข่งจริง (รองรับ filter ปี) |
+| **Favorites** | `GET` | `/favorites` | รายชื่อทีมโปรดของผู้ใช้ |
+| | `POST` | `/favorites/:team_id` | เพิ่มทีมโปรด |
+| | `DELETE` | `/favorites/:team_id` | ลบทีมโปรด |
+| **Highlights**| `GET` | `/heroes` | ข่าวเด่นและไฮไลท์หน้าแรก |
+| **Sync** | `POST` | `/sync/fixtures` | ดึงแมตช์จาก API-Football บันทึกลง Database |
+| | `POST` | `/sync/squads` | ดึงโค้ชและนักเตะ 20 ทีมลง Database อัตโนมัติ |
 
 ---
 

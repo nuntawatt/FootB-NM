@@ -48,8 +48,26 @@ type FixtureQuery struct {
 	From, To         time.Time
 }
 
+type Coach struct {
+	ExternalID  string
+	Name        string
+	Nationality string
+	PhotoURL    string
+}
+
+type Player struct {
+	ExternalID  string
+	Name        string
+	Number      *int
+	Position    string
+	Age         *int
+	PhotoURL    string
+}
+
 type Provider interface {
 	Leagues(ctx context.Context, country string) ([]League, error)
 	Fixtures(ctx context.Context, q FixtureQuery) ([]Fixture, error)
 	LiveFixtures(ctx context.Context, leagueExternalIDs []string) ([]Fixture, error)
+	Coach(ctx context.Context, teamExtID string) (*Coach, error)
+	Squad(ctx context.Context, teamExtID string) ([]Player, error)
 }

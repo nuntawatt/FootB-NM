@@ -14,7 +14,7 @@ type TeamHandler struct{ db *gorm.DB }
 
 func NewTeamHandler(db *gorm.DB) *TeamHandler { return &TeamHandler{db: db} }
 
-// List คืนรายการทีม (สามารถ filter ด้วย ?league_id=... ได้)
+// List คืนรายการทีม สามารถ filter ?league_id= ได้
 func (h *TeamHandler) List(c fiber.Ctx) error {
 	q := h.db.Model(&models.Team{})
 

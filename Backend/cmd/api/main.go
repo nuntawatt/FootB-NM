@@ -76,6 +76,28 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	// Sync
 	sync := handlers.NewSyncHandler(db, cfg)
 	api.Post("/sync/fixtures", sync.SyncFixtures)
+	api.Post("/sync/squads", sync.SyncSquads)
+
+
+	// Standings (ตารางคะแนน)
+	standings := handlers.NewStandingsHandler(db)
+	api.Get("/standings", standings.Get)
+
+	// Favorites (ทีมโปรด)
+	favorites := handlers.NewFavoriteHandler(db)
+	fav := api.Group("/favorites")
+	fav.Get("/", favorites.List)
+	fav.Post("/:team_id", favorites.Add)
+	fav.Delete("/:team_id", favorites.Remove)
+
+	// Extra Features (Form, Coach, Squad, Lineups, Venue, Heroes)
+	extra := handlers.NewExtraHandler(db)
+	api.Get("/heroes", extra.Heroes)
+	api.Get("/teams/:id/form", extra.TeamForm)
+	api.Get("/teams/:id/coach", extra.TeamCoach)
+	api.Get("/teams/:id/squad", extra.TeamSquad)
+	api.Get("/matches/:id/lineups", extra.MatchLineups)
+	api.Get("/matches/:id/venue", extra.MatchVenue)
 }
 
 func jsonErrorHandler(c fiber.Ctx, err error) error {
