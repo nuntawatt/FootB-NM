@@ -6,57 +6,65 @@ Content-Type: `application/json`
 
 ---
 
-## สรุป Endpoints ทั้งหมดในระบบ
+## สรุป Endpoints ทั้งหมดในระบบ (API Overview)
 
-| หมวดหมู่ | Method | Endpoint | หน้าที่ |
-|:---|:---:|:---|:---|
-| **Auth** | `POST` | `/register` | สมัครสมาชิกใหม่ (คืน JWT Token) |
-| | `POST` | `/login` | เข้าสู่ระบบ (คืน JWT Token) |
-| | `GET` | `/profile` | ดูโปรไฟล์ผู้ใช้ปัจจุบัน (ใช้ Bearer Token) |
-| | `PUT` | `/profile` | แก้ไขข้อมูลโปรไฟล์ |
-| **System** | `GET` | `/health` | ตรวจสอบสถานะ Server และ Database |
-| **Seasons** | `GET` | `/seasons` | รายการปี/ฤดูกาลทั้งหมด (2022-2026) สำหรับ Dropdown |
-| **Leagues** | `GET` | `/leagues` | รายชื่อลีกและบอลถ้วยทั้งหมด |
-| | `GET` | `/leagues/:id` | ข้อมูลลีกตาม ID |
-| **Teams** | `GET` | `/teams` | รายชื่อทีมทั้งหมด (รองรับ ?league_id=) |
-| | `GET` | `/teams/:id` | ข้อมูลทีมตาม ID |
-| | `GET` | `/teams/:id/form` | ผลงาน 5 นัดล่าสุดของทีม (W/D/L) |
-| | `GET` | `/teams/:id/coach` | ข้อมูลโค้ชของทีม |
-| | `GET` | `/teams/:id/squad` | รายชื่อนักเตะทั้งหมดของทีม |
-| **Matches** | `GET` | `/matches` | ตารางแข่งและผลบอล (รองรับ filter ปี/ฤดูกาล/สถานะ/วัน) |
-| | `GET` | `/matches/:id` | ข้อมูลแมตช์ตาม ID |
-| | `GET` | `/matches/:id/lineups` | รายชื่อ 11 ตัวจริงและแผนการเล่น |
-| | `GET` | `/matches/:id/venue` | ข้อมูลสนามและช่องถ่ายทอดสด |
-| **Standings** | `GET` | `/standings` | ตารางคะแนนคำนวณจากผลแข่งจริงใน DB |
-| **Favorites** | `GET` | `/favorites` | รายชื่อทีมโปรดของผู้ใช้ |
-| | `POST` | `/favorites/:team_id` | เพิ่มทีมเข้าทีมโปรด |
-| | `DELETE` | `/favorites/:team_id` | ลบทีมออกจากทีมโปรด |
-| **Highlights**| `GET` | `/heroes` | ข่าวเด่นและแบนเนอร์ไฮไลท์หน้าแรก |
-| **Sync** | `POST` | `/sync/fixtures` | ดึงแมตช์จาก API-Football บันทึกลง Database |
-| | `POST` | `/sync/squads` | ดึงโค้ชและนักเตะ 20 ทีมลง Database อัตโนมัติ |
+| หมวดหมู่ | Method | Endpoint | สิทธิ์เข้าถึง | หน้าที่ |
+|:---|:---:|:---|:---:|:---|
+| **1. Auth & Profile** | `POST` | `/register` | Public | สมัครสมาชิกใหม่ (ส่งคืน JWT Token) |
+| | `POST` | `/login` | Public | เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้ |
+| | `GET` | `/profile` | Bearer Token | ดูข้อมูลโปรไฟล์ส่วนตัว |
+| | `PUT` | `/profile` | Bearer Token | แก้ไขข้อมูลโปรไฟล์ (ชื่อ, รูป Avatar) |
+| **2. Seasons** | `GET` | `/seasons` | Public | รายการปี/ฤดูกาลทั้งหมด (2022-2026) |
+| **3. Leagues** | `GET` | `/leagues` | Public | รายชื่อลีกและบอลถ้วยทั้งหมด |
+| | `GET` | `/leagues/:id` | Public | ข้อมูลลีกตาม ID |
+| **4. Teams** | `GET` | `/teams` | Public | รายชื่อทีมทั้งหมด (รองรับ `?league_id=`) |
+| | `GET` | `/teams/:id` | Public | ข้อมูลทีมตาม ID |
+| | `GET` | `/teams/:id/form` | Public | ผลงาน 5 นัดล่าสุดของทีม (W/D/L) |
+| | `GET` | `/teams/:id/coach` | Public | ข้อมูลหัวหน้าผู้ฝึกสอน |
+| | `GET` | `/teams/:id/squad` | Public | รายชื่อนักเตะทั้งหมดของทีม |
+| **5. Matches** | `GET` | `/matches` | Public | ตารางแข่งและผลบอล (รองรับ filter) |
+| | `GET` | `/matches/:id` | Public | ข้อมูลแมตช์ตาม ID |
+| | `GET` | `/matches/:id/lineups` | Public | รายชื่อ 11 ตัวจริง แผนการเล่น ตัวสำรอง |
+| | `GET` | `/matches/:id/venue` | Public | ข้อมูลสนาม เมือง ความจุ ช่องถ่ายทอดสด |
+| **6. Standings** | `GET` | `/standings` | Public | ตารางคะแนนคำนวณจากผลแข่งจริงใน DB |
+| **7. Favorites** | `GET` | `/favorites` | Optional Auth | รายชื่อทีมโปรดของผู้ใช้ |
+| | `POST` | `/favorites/:team_id` | Optional Auth | เพิ่มทีมเข้าทีมโปรด |
+| | `DELETE` | `/favorites/:team_id` | Optional Auth | ลบทีมออกจากทีมโปรด |
+| **8. Highlights** | `GET` | `/heroes` | Public | ข่าวเด่นและแบนเนอร์ไฮไลท์หน้าแรก |
+| **9. System** | `GET` | `/health` | Public | ตรวจสอบสถานะ Server และ Database |
+| **10. Sync** | `POST` | `/sync/fixtures` | Public | ดึงแมตช์จาก API-Football บันทึกลง DB |
+| | `POST` | `/sync/squads` | Public | ดึงโค้ชและนักเตะ 20 ทีมลง DB อัตโนมัติ |
 
 ---
 
 ## 1. Authentication & Profile (ระบบสมาชิกและเข้าสู่ระบบ)
 
-### POST /register (หรือ /auth/register)
-สมัครสมาชิกใหม่ ระบบจะทำการแฮชรหัสผ่านด้วย bcrypt และคืนค่า JWT Token พร้อมข้อมูลผู้ใช้ทันที
+### กฎการตรวจสอบข้อมูล (Validation Rules)
+* **username:** ต้องยาว 3-30 ตัวอักษร อนุญาตเฉพาะตัวอักษรภาษาอังกฤษ, ตัวเลข และขีดล่าง `_` (ห้ามมีช่องว่างหรืออักขระพิเศษ)
+* **email:** รูปแบบอีเมลมาตรฐาน ความยาวไม่เกิน 255 ตัวอักษร
+* **password:** ต้องยาว 6-72 ตัวอักษร และต้องมีทั้งตัวอักษรและตัวเลขผสมกันอย่างน้อยอย่างละ 1 ตัว
+* **avatar_url:** (ไม่บังคับ) หากส่งมา ต้องเป็น URL ที่ขึ้นต้นด้วย `http://` หรือ `https://`
+
+---
+
+### POST /register
+สมัครสมาชิกใหม่ ระบบจะทำการแฮชรหัสผ่านด้วย bcrypt และส่งคืน JWT Token พร้อมข้อมูลผู้ใช้ทันที
 
 - **Headers:** `Content-Type: application/json`
 - **Request Body:**
 ```json
 {
-  "username": "somchai",
-  "email": "somchai@example.com",
-  "password": "password123",
-  "avatar_url": ""   // optional
+  "username": "somchai99",
+  "email": "somchai99@example.com",
+  "password": "Password123",
+  "avatar_url": ""
 }
 ```
 - **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"somchai","email":"somchai@example.com","password":"password123"}'
+  -d '{"username":"somchai99","email":"somchai99@example.com","password":"Password123"}'
 ```
 - **Response (201 Created):**
 ```json
@@ -64,34 +72,37 @@ curl -i -X POST http://localhost:3000/api/v1/register \
   "status": "success",
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
-    "id": "61e3d51a-63b5-4890-9cc3-8260226b60a4",
-    "username": "somchai",
-    "email": "somchai@example.com",
-    "avatar_url": "https://ui-avatars.com/api/?name=somchai&background=0F172A&color=38BDF8&size=256",
+    "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
+    "username": "somchai99",
+    "email": "somchai99@example.com",
+    "avatar_url": "https://ui-avatars.com/api/?name=somchai99&background=0F172A&color=38BDF8&size=256",
     "role": "user",
-    "created_at": "2026-11-26T15:26:47.212+07:00"
+    "created_at": "2026-11-26T15:36:47.484+07:00"
   }
 }
 ```
+- **Error Responses:**
+  - `400 Bad Request`: ข้อมูลไม่ผ่านเกณฑ์ เช่น `{"error": "password must contain at least one letter and one number"}`
+  - `409 Conflict`: ชื่อผู้ใช้หรืออีเมลซ้ำ `{"error": "username is already taken"}`
 
 ---
 
-### POST /login (หรือ /auth/login)
+### POST /login
 เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้
 
 - **Headers:** `Content-Type: application/json`
 - **Request Body:**
 ```json
 {
-  "email": "somchai@example.com",  // หรือ username
-  "password": "password123"
+  "email": "somchai99@example.com",
+  "password": "Password123"
 }
 ```
 - **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"somchai@example.com","password":"password123"}'
+  -d '{"email":"somchai99@example.com","password":"Password123"}'
 ```
 - **Response (200 OK):**
 ```json
@@ -99,20 +110,26 @@ curl -i -X POST http://localhost:3000/api/v1/login \
   "status": "success",
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
-    "id": "61e3d51a-63b5-4890-9cc3-8260226b60a4",
-    "username": "somchai",
-    "email": "somchai@example.com",
-    "avatar_url": "https://ui-avatars.com/api/?name=somchai&background=0F172A&color=38BDF8&size=256",
+    "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
+    "username": "somchai99",
+    "email": "somchai99@example.com",
+    "avatar_url": "https://ui-avatars.com/api/?name=somchai99&background=0F172A&color=38BDF8&size=256",
     "role": "user",
-    "created_at": "2026-11-26T15:26:47.212+07:00"
+    "created_at": "2026-11-26T15:36:47.484+07:00"
   }
+}
+```
+- **Error Response (401 Unauthorized):**
+```json
+{
+  "error": "invalid email/username or password"
 }
 ```
 
 ---
 
 ### GET /profile
-ดึงข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่ (ต้องแนบ Bearer Token)
+ดึงข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่ (ต้องส่ง Bearer Token)
 
 - **Headers:** `Authorization: Bearer <TOKEN>`
 - **curl:**
@@ -123,28 +140,34 @@ curl -i http://localhost:3000/api/v1/profile \
 - **Response (200 OK):**
 ```json
 {
-  "id": "61e3d51a-63b5-4890-9cc3-8260226b60a4",
-  "username": "somchai",
-  "email": "somchai@example.com",
-  "avatar_url": "https://ui-avatars.com/api/?name=somchai&background=0F172A&color=38BDF8&size=256",
+  "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
+  "username": "somchai99",
+  "email": "somchai99@example.com",
+  "avatar_url": "https://ui-avatars.com/api/?name=somchai99&background=0F172A&color=38BDF8&size=256",
   "role": "user",
-  "created_at": "2026-11-26T15:26:47.212+07:00"
+  "created_at": "2026-11-26T15:36:47.484+07:00"
+}
+```
+- **Error Response (401 Unauthorized):**
+```json
+{
+  "error": "missing authorization header"
 }
 ```
 
 ---
 
 ### PUT /profile
-แก้ไขข้อมูลโปรไฟล์ (ชื่อผู้ใช้, รูปโปรไฟล์)
+แก้ไขข้อมูลโปรไฟล์ส่วนตัว (ชื่อผู้ใช้, URL รูปโปรไฟล์)
 
-- **Headers:** 
+- **Headers:**
   - `Authorization: Bearer <TOKEN>`
   - `Content-Type: application/json`
 - **Request Body:**
 ```json
 {
   "username": "somchai_pro",
-  "avatar_url": "https://example.com/new-avatar.png"
+  "avatar_url": "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=400&q=80"
 }
 ```
 - **curl:**
@@ -154,31 +177,28 @@ curl -i -X PUT http://localhost:3000/api/v1/profile \
   -H "Content-Type: application/json" \
   -d '{"username":"somchai_pro"}'
 ```
-
----
-
-## 2. System
-
-### GET /health
-ตรวจสอบสถานะการทำงานของ Server และ Database
-
-- **curl:**
-```bash
-curl -i http://localhost:3000/api/v1/health
-```
 - **Response (200 OK):**
 ```json
 {
-  "status": "ok"
+  "status": "success",
+  "message": "profile updated successfully",
+  "user": {
+    "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
+    "username": "somchai_pro",
+    "email": "somchai99@example.com",
+    "avatar_url": "https://ui-avatars.com/api/?name=somchai99&background=0F172A&color=38BDF8&size=256",
+    "role": "user",
+    "created_at": "2026-11-26T15:36:47.484+07:00"
+  }
 }
 ```
 
 ---
 
-## 3. Seasons (ปี / ฤดูกาล)
+## 2. Seasons (ปี / ฤดูกาล)
 
 ### GET /seasons
-ดึงรายชื่อปี/ฤดูกาลทั้งหมด (2022 ถึง 2026) พร้อมจำนวนแมตช์ในระบบ สำหรับนำไปทำ Dropdown เลือกปีใน Frontend
+ดึงรายชื่อปี/ฤดูกาลทั้งหมด (2022 ถึง 2026) พร้อมจำนวนแมตช์ในระบบ สำหรับนำไปทำ Dropdown ใน Frontend
 
 - **curl:**
 ```bash
@@ -217,7 +237,7 @@ curl -i http://localhost:3000/api/v1/seasons
 
 ---
 
-## 4. Leagues (ลีกฟุตบอล)
+## 3. Leagues (ลีกฟุตบอล)
 
 ### GET /leagues
 ดึงรายชื่อลีกและบอลถ้วยทั้งหมด
@@ -253,7 +273,7 @@ curl -i http://localhost:3000/api/v1/leagues/0aab480b-9e10-4fea-a6fc-884160e684d
 
 ---
 
-## 5. Teams (สโมสร/ทีมฟุตบอล)
+## 4. Teams (สโมสร/ทีมฟุตบอล)
 
 ### GET /teams
 ดึงรายชื่อทีมฟุตบอลทั้งหมด
@@ -347,23 +367,13 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/
     "age": 31,
     "nationality": "Thailand",
     "photo_url": "https://media.api-sports.io/football/players/48975.png"
-  },
-  {
-    "id": "p2b3c4d5-1234-5678-90ab-cdef12345678",
-    "team_id": "e1c4d9dc-03a5-427c-b055-57d106c81928",
-    "name": "E. Fernandes",
-    "number": 4,
-    "position": "Defender",
-    "age": 30,
-    "nationality": "Brazil",
-    "photo_url": "https://media.api-sports.io/football/players/12345.png"
   }
 ]
 ```
 
 ---
 
-## 6. Matches (ตารางแข่งและผลบอล)
+## 5. Matches (ตารางแข่งและผลบอล)
 
 ### GET /matches
 ดึงรายการแข่งขันและผลบอล พร้อมข้อมูลทีมเหย้า-เยือน โลโก้ สกอร์ นาที และสถานะ
@@ -371,9 +381,9 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/
 - **Query Parameters (Optional):**
   - `season`: กรองตามฤดูกาล (`2024`, `2023`, `2022`)
   - `year`: กรองตามปีปฏิทินที่แข่ง (`2024`)
-  - `status`: กรองสถานะ (`finished` จบแล้ว, `live` กำลังเตะ, `scheduled` ยังไม่แข่ง)
+  - `status`: กรองสถานะ (`finished`, `live`, `scheduled`)
   - `league_id`: กรองเฉพาะลีกที่ระบุ (UUID)
-  - `date`: กรองตามวันที่แข่ง รูปแบบ `YYYY-MM-DD` (เช่น `2025-04-30`)
+  - `date`: กรองตามวันที่แข่ง รูปแบบ `YYYY-MM-DD`
   - `limit`: จำนวนรายการต่อหน้า (default: 50, สูงสุด: 200)
   - `page`: หน้าที่ต้องการดึง (default: 1)
 
@@ -485,21 +495,6 @@ curl -i "http://localhost:3000/api/v1/standings?season=2024"
     "goal_diff": 43,
     "points": 69,
     "form": ["W", "W", "D", "W", "W"]
-  },
-  {
-    "rank": 2,
-    "team_id": "22cc1f04-1fd8-4743-b1d6-226f6f999bc2",
-    "team_name": "Bangkok United",
-    "team_logo": "https://media.api-sports.io/football/teams/2276.png",
-    "played": 30,
-    "won": 17,
-    "drawn": 10,
-    "lost": 3,
-    "goals_for": 53,
-    "goals_against": 24,
-    "goal_diff": 29,
-    "points": 61,
-    "form": ["W", "D", "W", "W", "L"]
   }
 ]
 ```
@@ -508,14 +503,15 @@ curl -i "http://localhost:3000/api/v1/standings?season=2024"
 
 ## 7. Favorites (ระบบทีมโปรด)
 
+*หากผู้ใช้ล็อกอิน ระบบจะผูกทีมโปรดกับ User ID จาก JWT Token โดยอัตโนมัติ (หรือส่ง `X-User-ID: <UUID>` เพื่อทดสอบ)*
+
 ### GET /favorites
 ดึงรายการทีมโปรดทั้งหมดของผู้ใช้
 
-- **Headers (Optional):**
-  - `X-User-ID`: UUID ของผู้ใช้ (หากไม่ส่ง ระบบจะใช้ Default Test User ID ให้โดยอัตโนมัติ)
 - **curl:**
 ```bash
-curl -i http://localhost:3000/api/v1/favorites
+curl -i http://localhost:3000/api/v1/favorites \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
 ---
@@ -525,15 +521,8 @@ curl -i http://localhost:3000/api/v1/favorites
 
 - **curl:**
 ```bash
-curl -i -X POST http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-57d106c81928
-```
-- **Response (201 Created):**
-```json
-{
-  "status": "success",
-  "message": "team added to favorites",
-  "team_id": "e1c4d9dc-03a5-427c-b055-57d106c81928"
-}
+curl -i -X POST http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-57d106c81928 \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
 ---
@@ -543,15 +532,8 @@ curl -i -X POST http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-5
 
 - **curl:**
 ```bash
-curl -i -X DELETE http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-57d106c81928
-```
-- **Response (200 OK):**
-```json
-{
-  "status": "success",
-  "message": "team removed from favorites",
-  "team_id": "e1c4d9dc-03a5-427c-b055-57d106c81928"
-}
+curl -i -X DELETE http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-57d106c81928 \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
 ---
@@ -576,23 +558,27 @@ curl -i http://localhost:3000/api/v1/heroes
     "tag": "BIG MATCH",
     "match_id": "f5a892b1-1234-5678-90ab-cdef12345678",
     "redirect_url": "/matches"
-  },
-  {
-    "id": "hero-2",
-    "title": "สรุปตารางคะแนนล่าสุด ใครเต็งแชมป์ประจำฤดูกาล?",
-    "subtitle": "เจาะลึกฟอร์ม 5 นัดหลังสุดของหัวตาราง",
-    "image_url": "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80",
-    "tag": "ANALYSIS",
-    "redirect_url": "/standings"
   }
 ]
 ```
 
 ---
 
-## 9. Data Synchronization (ระบบดึงข้อมูลลงฐานข้อมูล)
+## 9. System (สถานะระบบ)
 
-### 9.1 รันผ่าน HTTP API
+### GET /health
+ตรวจสอบสถานะการทำงานของ Server และการเชื่อมต่อ Database
+
+- **curl:**
+```bash
+curl -i http://localhost:3000/api/v1/health
+```
+
+---
+
+## 10. Data Synchronization (ระบบดึงข้อมูลลงฐานข้อมูล)
+
+### 10.1 รันผ่าน HTTP API
 
 #### POST /sync/fixtures
 ดึงแมตช์การแข่งขันจาก API-Football บันทึกลงฐานข้อมูล
@@ -614,10 +600,10 @@ curl -i -X POST http://localhost:3000/api/v1/sync/squads
 
 ---
 
-### 9.2 รันผ่าน Terminal CLI
+### 10.2 รันผ่าน Terminal CLI
 
 ```bash
-# 1. ดูดข้อมูลโค้ชและนักเตะทั้ง 20 ทีม (รันคำสั่งเดียวจบ มีระบบเว้นจังหวะกัน rate limit อัตโนมัติ)
+# 1. ดูดข้อมูลโค้ชและนักเตะทั้ง 20 ทีม (มีระบบเว้นจังหวะกัน rate limit และข้ามทีมที่เคยดูดแล้ว)
 go run ./cmd/sync squads
 
 # 2. ดูดโปรแกรมและผลการแข่งขันแบบระบุช่วงปี
@@ -625,4 +611,14 @@ go run ./cmd/sync fixtures -season 2022-2024
 
 # 3. ดูรายการลีกที่ผูกไว้
 go run ./cmd/sync leagues
+```
+
+---
+
+## 11. Database Migration
+
+หากต้องการสร้างตาราง `coaches` และ `players` ใน PostgreSQL:
+
+```bash
+PGPASSWORD=nuntawat838 psql -h localhost -U postgres -d football -f migrations/000003_create_coaches_and_players.up.sql
 ```
