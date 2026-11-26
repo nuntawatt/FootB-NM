@@ -17,8 +17,8 @@ type League struct {
 	Name          string
 	Country       string
 	LogoURL       string
-	Type          string // "league" | "cup"
-	CurrentSeason int    // 0 = ไม่ทราบ
+	Type          string // "league" หรือ "cup"
+	CurrentSeason int
 }
 
 type Team struct {
@@ -32,26 +32,42 @@ type Fixture struct {
 	LeagueExternalID string
 	Round            string
 	KickOff          time.Time
-	Status           string // Status หรือ "" ถ้าไม่รู้จักรหัสสถานะ
+	Status           string
 	RawStatus        string
-	Minute           *int // มีค่าเฉพาะตอน Match
+	Minute           *int
 	Home, Away       Team
-	HomeScore        *int // nil = ยังไม่มีสกอร์
+	HomeScore        *int
 	AwayScore        *int
-	HomePenalty      *int // คะแนนดวลจุดโทษ nil ไม่มีจุดโทษ
+	HomePenalty      *int
 	AwayPenalty      *int
 }
 
 type FixtureQuery struct {
 	LeagueExternalID string
 	Season           int
-	From, To         time.Time // ตามโซนเวลาค่าที่ส่งมา
+	From, To         time.Time
+}
+
+type Coach struct {
+	ExternalID  string
+	Name        string
+	Nationality string
+	PhotoURL    string
+}
+
+type Player struct {
+	ExternalID  string
+	Name        string
+	Number      *int
+	Position    string
+	Age         *int
+	PhotoURL    string
 }
 
 type Provider interface {
 	Leagues(ctx context.Context, country string) ([]League, error)
 	Fixtures(ctx context.Context, q FixtureQuery) ([]Fixture, error)
-	
-	// LiveFixtures คืนแมตซ์ที่กำลังแข่งของลีกที่ระบุ
 	LiveFixtures(ctx context.Context, leagueExternalIDs []string) ([]Fixture, error)
+	Coach(ctx context.Context, teamExtID string) (*Coach, error)
+	Squad(ctx context.Context, teamExtID string) ([]Player, error)
 }

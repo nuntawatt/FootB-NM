@@ -14,22 +14,7 @@ type LeagueHandler struct{ db *gorm.DB }
 
 func NewLeagueHandler(db *gorm.DB) *LeagueHandler { return &LeagueHandler{db: db} }
 
-// หา league จาก :id ใช้ร่วมกันหลาย endpoint
-func (h *LeagueHandler) find(c fiber.Ctx) (*models.League, error) {
-	id, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return nil, fiber.NewError(fiber.StatusBadRequest, "invalid id")
-	}
-	var league models.League
-	if err := h.db.First(&league, "id = ?", id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fiber.NewError(fiber.StatusNotFound, "league not found")
-		}
-		return nil, err
-	}
-	return &league, nil
-}
-
+// List คืนรายการลีกทั้งหมด
 func (h *LeagueHandler) List(c fiber.Ctx) error {
 	var leagues []models.League
 	if err := h.db.Order("name").Find(&leagues).Error; err != nil {
@@ -38,9 +23,18 @@ func (h *LeagueHandler) List(c fiber.Ctx) error {
 	return c.JSON(leagues)
 }
 
+// Get คืนข้อมูลลีกตาม id
 func (h *LeagueHandler) Get(c fiber.Ctx) error {
-	league, err := h.find(c)
+	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid id")
+	}
+
+	var league models.League
+	if err := h.db.First(&league, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fiber.NewError(fiber.StatusNotFound, "league not found")
+		}
 		return err
 	}
 	return c.JSON(league)

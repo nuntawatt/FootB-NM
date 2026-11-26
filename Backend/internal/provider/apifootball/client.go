@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"football/internal/provider"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"football/internal/provider"
 )
 
 const (
@@ -31,8 +32,8 @@ type Client struct {
 
 	mu        sync.Mutex
 	last      time.Time
-	remainDay int // โควตาคงเหลือรายวัน -1 คือยังไม่ทราบ
-	remainMin int // โควตาคงเหลือรายนาที -1 คือยังไม่ทราบ
+	remainDay int // โควตารายวัน (-1 คือยังไม่ทราบ)
+	remainMin int // โควตารายนาที (-1 คือยังไม่ทราบ)
 }
 
 type Option func(*Client)
@@ -67,11 +68,10 @@ func New(apiKey string, opts ...Option) *Client {
 		apiKey:      apiKey,
 		timezone:    DefaultTimezone,
 		http:        &http.Client{Timeout: 20 * time.Second},
-		minInterval: time.Second, // เว้นระยะระหว่างคำขอ กันยิงรัวจนโดน Block
+		minInterval: 6500 * time.Millisecond, // หน่วง 6.5s เพื่อไม่ให้เกิน 10 requests/นาที
 		remainDay:   -1,
 		remainMin:   -1,
 	}
-
 	for _, o := range opts {
 		o(c)
 	}
@@ -80,34 +80,29 @@ func New(apiKey string, opts ...Option) *Client {
 
 var _ provider.Provider = (*Client)(nil)
 
-// Quota คืนโควตาที่เหลือตาม header ของคำตอบล่าสุด (-1 = ไม่ทราบ)
+// Quota คืนค่าโควตาคงเหลือจาก response header
 func (c *Client) Quota() (day, minute int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.remainDay, c.remainMin
 }
 
+// wait หน่วงเวลาตาม minInterval เพื่อกันยิงเกิน rate limit
 func (c *Client) wait(ctx context.Context) error {
 	c.mu.Lock()
 
 	now := time.Now()
 	next := now
-
 	if !c.last.IsZero() {
-		next = c.last.Add(c.minInterval)
-
-		if next.Before(now) {
-			next = now
+		if candidate := c.last.Add(c.minInterval); candidate.After(now) {
+			next = candidate
 		}
 	}
-
-	// จองเวลาสำหรับ request ถัดไป
 	c.last = next
+
 	c.mu.Unlock()
 
-	// ไม่ต้องถือ mutex ระหว่างรอ
 	delay := time.Until(next)
-
 	if delay <= 0 {
 		return nil
 	}
@@ -118,7 +113,6 @@ func (c *Client) wait(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-
 	case <-timer.C:
 		return nil
 	}
@@ -127,6 +121,7 @@ func (c *Client) wait(ctx context.Context) error {
 func (c *Client) recordQuota(h http.Header) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if n, err := strconv.Atoi(h.Get("x-ratelimit-requests-remaining")); err == nil {
 		c.remainDay = n
 	}
@@ -135,8 +130,7 @@ func (c *Client) recordQuota(h http.Header) {
 	}
 }
 
-// hasErrors: API ตอบ HTTP 200 แม้ผิดพลาด โดย "errors" จะเป็น [] เมื่อปกติ
-// และเป็นอ็อบเจกต์ เช่น {"token":"..."} เมื่อมีปัญหา
+// hasErrors ตรวจสอบว่า API envelope มี error หรือไม่
 func hasErrors(raw json.RawMessage) bool {
 	switch strings.TrimSpace(string(raw)) {
 	case "", "null", "[]", "{}":
@@ -146,48 +140,62 @@ func hasErrors(raw json.RawMessage) bool {
 }
 
 func (c *Client) get(ctx context.Context, path string, params url.Values, out any) error {
-	if err := c.wait(ctx); err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
-	if err != nil {
-		return err
-	}
-	req.URL.RawQuery = params.Encode()
-	req.Header.Set("x-apisports-key", c.apiKey)
+	for attempt := 0; attempt < 3; attempt++ {
+		if err := c.wait(ctx); err != nil {
+			return err
+		}
 
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("apifootball %s: %w", path, err)
-	}
-	defer resp.Body.Close()
-	c.recordQuota(resp.Header)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+		if err != nil {
+			return err
+		}
+		req.URL.RawQuery = params.Encode()
+		req.Header.Set("x-apisports-key", c.apiKey)
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-	if err != nil {
-		return fmt.Errorf("apifootball %s: read body: %w", path, err)
-	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return ErrRateLimited
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("apifootball %s: HTTP %d: %s", path, resp.StatusCode, truncate(body, 300))
-	}
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return fmt.Errorf("apifootball %s: %w", path, err)
+		}
 
-	var env struct {
-		Errors   json.RawMessage `json:"errors"`
-		Response json.RawMessage `json:"response"`
+		c.recordQuota(resp.Header)
+
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		resp.Body.Close()
+		if err != nil {
+			return fmt.Errorf("apifootball %s: read body: %w", path, err)
+		}
+
+		if resp.StatusCode == http.StatusTooManyRequests {
+			// ติด rate limit รายนาที รอ 25 วินาทีแล้วลองใหม่
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(25 * time.Second):
+				continue
+			}
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("apifootball %s: HTTP %d: %s", path, resp.StatusCode, truncate(body, 300))
+		}
+
+		var env struct {
+			Errors   json.RawMessage `json:"errors"`
+			Response json.RawMessage `json:"response"`
+		}
+		if err := json.Unmarshal(body, &env); err != nil {
+			return fmt.Errorf("apifootball %s: decode envelope: %w", path, err)
+		}
+		if hasErrors(env.Errors) {
+			return fmt.Errorf("apifootball %s: api error: %s", path, strings.TrimSpace(string(env.Errors)))
+		}
+
+		if err := json.Unmarshal(env.Response, out); err != nil {
+			return fmt.Errorf("apifootball %s: decode response: %w", path, err)
+		}
+		return nil
 	}
-	if err := json.Unmarshal(body, &env); err != nil {
-		return fmt.Errorf("apifootball %s: decode envelope: %w", path, err)
-	}
-	if hasErrors(env.Errors) {
-		return fmt.Errorf("apifootball %s: api error: %s", path, strings.TrimSpace(string(env.Errors)))
-	}
-	if err := json.Unmarshal(env.Response, out); err != nil {
-		return fmt.Errorf("apifootball %s: decode response: %w", path, err)
-	}
-	return nil
+	return ErrRateLimited
 }
 
 func truncate(b []byte, n int) string {
@@ -197,8 +205,6 @@ func truncate(b []byte, n int) string {
 	}
 	return s
 }
-
-// DTO ของ API-Football (เก็บเฉพาะฟิลด์ที่ใช้)
 
 type leagueItem struct {
 	League struct {
@@ -251,9 +257,7 @@ type fixtureItem struct {
 	} `json:"score"`
 }
 
-// MapStatus แปลงรหัสสถานะ (fixture.status.short) เป็นสถานะของระบบเรา
-// ตาราง matches ไม่มีสถานะ "ยกเลิก" จึงจัด SUSP/CANC/ABD ไว้ที่ postponed
-// ถ้าไม่รู้จักรหัส คืน ok=false เพื่อให้ผู้เรียกตัดสินใจเอง (ไม่เดา)
+// MapStatus แปลงสถานะจาก API-Football เป็นสถานะของระบบ
 func MapStatus(short string) (status string, ok bool) {
 	switch short {
 	case "TBD", "NS":
@@ -269,28 +273,40 @@ func MapStatus(short string) (status string, ok bool) {
 }
 
 func (it fixtureItem) toDomain() (provider.Fixture, error) {
-	kick, err := time.Parse(time.RFC3339, it.Fixture.Date)
+	kickOff, err := time.Parse(time.RFC3339, it.Fixture.Date)
 	if err != nil {
 		return provider.Fixture{}, fmt.Errorf("fixture %d: bad date %q: %w", it.Fixture.ID, it.Fixture.Date, err)
 	}
+
 	status, _ := MapStatus(it.Fixture.Status.Short)
+
 	f := provider.Fixture{
 		ExternalID:       strconv.Itoa(it.Fixture.ID),
 		LeagueExternalID: strconv.Itoa(it.League.ID),
 		Round:            it.League.Round,
-		KickOff:          kick,
+		KickOff:          kickOff,
 		Status:           status,
 		RawStatus:        it.Fixture.Status.Short,
-		Home:             provider.Team{ExternalID: strconv.Itoa(it.Teams.Home.ID), Name: it.Teams.Home.Name, LogoURL: it.Teams.Home.Logo},
-		Away:             provider.Team{ExternalID: strconv.Itoa(it.Teams.Away.ID), Name: it.Teams.Away.Name, LogoURL: it.Teams.Away.Logo},
-		HomeScore:        it.Goals.Home,
-		AwayScore:        it.Goals.Away,
-		HomePenalty:      it.Score.Penalty.Home,
-		AwayPenalty:      it.Score.Penalty.Away,
+		Home: provider.Team{
+			ExternalID: strconv.Itoa(it.Teams.Home.ID),
+			Name:       it.Teams.Home.Name,
+			LogoURL:    it.Teams.Home.Logo,
+		},
+		Away: provider.Team{
+			ExternalID: strconv.Itoa(it.Teams.Away.ID),
+			Name:       it.Teams.Away.Name,
+			LogoURL:    it.Teams.Away.Logo,
+		},
+		HomeScore:   it.Goals.Home,
+		AwayScore:   it.Goals.Away,
+		HomePenalty: it.Score.Penalty.Home,
+		AwayPenalty: it.Score.Penalty.Away,
 	}
+
 	if status == provider.StatusLive {
 		f.Minute = it.Fixture.Status.Elapsed
 	}
+
 	return f, nil
 }
 
@@ -306,16 +322,17 @@ func toDomainFixtures(items []fixtureItem) ([]provider.Fixture, error) {
 	return out, nil
 }
 
-// implement provider.Provider
 func (c *Client) Leagues(ctx context.Context, country string) ([]provider.League, error) {
 	q := url.Values{}
 	if country != "" {
 		q.Set("country", country)
 	}
+
 	var items []leagueItem
 	if err := c.get(ctx, "/leagues", q, &items); err != nil {
 		return nil, err
 	}
+
 	out := make([]provider.League, 0, len(items))
 	for _, it := range items {
 		l := provider.League{
@@ -343,12 +360,14 @@ func (c *Client) Fixtures(ctx context.Context, fq provider.FixtureQuery) ([]prov
 	q.Set("league", fq.LeagueExternalID)
 	q.Set("season", strconv.Itoa(fq.Season))
 	q.Set("timezone", c.timezone)
+
 	if !fq.From.IsZero() {
 		q.Set("from", fq.From.Format("2006-01-02"))
 	}
 	if !fq.To.IsZero() {
 		q.Set("to", fq.To.Format("2006-01-02"))
 	}
+
 	var items []fixtureItem
 	if err := c.get(ctx, "/fixtures", q, &items); err != nil {
 		return nil, err
@@ -360,12 +379,78 @@ func (c *Client) LiveFixtures(ctx context.Context, leagueExternalIDs []string) (
 	if len(leagueExternalIDs) == 0 {
 		return nil, nil
 	}
+
 	q := url.Values{}
 	q.Set("live", strings.Join(leagueExternalIDs, "-"))
 	q.Set("timezone", c.timezone)
+
 	var items []fixtureItem
 	if err := c.get(ctx, "/fixtures", q, &items); err != nil {
 		return nil, err
 	}
 	return toDomainFixtures(items)
 }
+
+type coachItem struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Nationality string `json:"nationality"`
+	Photo       string `json:"photo"`
+}
+
+type squadItem struct {
+	Players []struct {
+		ID       int    `json:"id"`
+		Name     string `json:"name"`
+		Age      *int   `json:"age"`
+		Number   *int   `json:"number"`
+		Position string `json:"position"`
+		Photo    string `json:"photo"`
+	} `json:"players"`
+}
+
+func (c *Client) Coach(ctx context.Context, teamExtID string) (*provider.Coach, error) {
+	q := url.Values{}
+	q.Set("team", teamExtID)
+
+	var items []coachItem
+	if err := c.get(ctx, "/coachs", q, &items); err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	first := items[0]
+	return &provider.Coach{
+		ExternalID:  strconv.Itoa(first.ID),
+		Name:        first.Name,
+		Nationality: first.Nationality,
+		PhotoURL:    first.Photo,
+	}, nil
+}
+
+func (c *Client) Squad(ctx context.Context, teamExtID string) ([]provider.Player, error) {
+	q := url.Values{}
+	q.Set("team", teamExtID)
+
+	var items []squadItem
+	if err := c.get(ctx, "/players/squads", q, &items); err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	out := make([]provider.Player, 0, len(items[0].Players))
+	for _, p := range items[0].Players {
+		out = append(out, provider.Player{
+			ExternalID: strconv.Itoa(p.ID),
+			Name:       p.Name,
+			Number:     p.Number,
+			Position:   p.Position,
+			Age:        p.Age,
+			PhotoURL:   p.Photo,
+		})
+	}
+	return out, nil
+}
+
