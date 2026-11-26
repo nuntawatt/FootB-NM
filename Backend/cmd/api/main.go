@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 
+	"football/internal/cache"
 	"football/internal/config"
 	"football/internal/database"
 	"football/internal/handlers"
@@ -28,6 +29,9 @@ func main() {
 	}
 	log.Println("database connected")
 
+	// start redis
+	rCache := cache.New(cfg.RedisURL)
+
 	app := fiber.New(fiber.Config{
 		ErrorHandler: jsonErrorHandler,
 	})
@@ -36,12 +40,12 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 
-	registerRoutes(app, db, cfg)
+	registerRoutes(app, db, cfg, rCache)
 
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
 
-func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
+func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, rCache *cache.Cache) {
 	api := app.Group("/api/v1")
 
 	// Health check
@@ -75,13 +79,12 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	mg.Get("/:id", matches.Get)
 
 	// Sync
-	sync := handlers.NewSyncHandler(db, cfg)
+	sync := handlers.NewSyncHandler(db, cfg, rCache)
 	api.Post("/sync/fixtures", sync.SyncFixtures)
 	api.Post("/sync/squads", sync.SyncSquads)
 
-
 	// Standings (ตารางคะแนน)
-	standings := handlers.NewStandingsHandler(db)
+	standings := handlers.NewStandingsHandler(db, rCache)
 	api.Get("/standings", standings.Get)
 
 	// User & Profile

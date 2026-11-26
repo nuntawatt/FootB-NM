@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"time"
 
+	"football/internal/cache"
 	"football/internal/models"
 
 	"github.com/gofiber/fiber/v3"
@@ -12,13 +14,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type StandingsHandler struct{ db *gorm.DB }
-
-func NewStandingsHandler(db *gorm.DB) *StandingsHandler {
-	return &StandingsHandler{db: db}
+type StandingsHandler struct {
+	db    *gorm.DB
+	cache *cache.Cache
 }
 
-// Get คำนวณตารางคะแนนจากผลการแข่งขันในฐานข้อมูล
+func NewStandingsHandler(db *gorm.DB, cache *cache.Cache) *StandingsHandler {
+	return &StandingsHandler{db: db, cache: cache}
+}
+
+// คำนวณตารางคะแนนจากผลการแข่งขันในฐานข้อมูล
 func (h *StandingsHandler) Get(c fiber.Ctx) error {
 	seasonYear := 2024
 	if s := c.Query("season"); s != "" {
@@ -26,7 +31,16 @@ func (h *StandingsHandler) Get(c fiber.Ctx) error {
 			seasonYear = n
 		}
 	}
+	leagueID := c.Query("league_id")
 
+	// เช็คข้อมูลจาก Redis cache ก่อนว่า เร็ว < 1ms
+	cacheKey := fmt.Sprintf("football:standings:%d:%s", seasonYear, leagueID)
+	var cacheRows []models.StandingsRow
+	if h.cache.Get(c.Context(), cacheKey, &cacheRows) {
+		return c.JSON(cacheRows)
+	}
+
+	// ถ้าไม่มีใน Cache ใช้คำนวณจาก DB ตามปกติ
 	start := time.Date(seasonYear, 7, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(seasonYear+1, 7, 1, 0, 0, 0, 0, time.UTC)
 
@@ -131,6 +145,9 @@ func (h *StandingsHandler) Get(c fiber.Ctx) error {
 	for i := range rows {
 		rows[i].Rank = i + 1
 	}
+
+	// บันทึกลง Redis Cache มีอายุ 30 นาที
+	h.cache.Set(c.Context(), cacheKey, rows, 30*time.Minute)
 
 	return c.JSON(rows)
 }
