@@ -37,6 +37,7 @@ type League struct {
 type Team struct {
 	Base
 	LeagueID      uuid.UUID `gorm:"type:uuid;not null;index" json:"league_id"`
+	League        *League   `gorm:"foreignKey:LeagueID" json:"league,omitempty"`
 	Name          string    `gorm:"not null" json:"name"`
 	ShortName     string    `json:"short_name"`
 	LogoURL       string    `json:"logo_url"`
@@ -46,8 +47,11 @@ type Team struct {
 type Match struct {
 	Base
 	LeagueID         uuid.UUID `gorm:"type:uuid;not null;index" json:"league_id"`
+	League           *League   `gorm:"foreignKey:LeagueID" json:"league,omitempty"`
 	HomeTeamID       uuid.UUID `gorm:"type:uuid;not null;index" json:"home_team_id"`
+	HomeTeam         *Team     `gorm:"foreignKey:HomeTeamID" json:"home_team,omitempty"`
 	AwayTeamID       uuid.UUID `gorm:"type:uuid;not null;index" json:"away_team_id"`
+	AwayTeam         *Team     `gorm:"foreignKey:AwayTeamID" json:"away_team,omitempty"`
 	MatchDate        time.Time `gorm:"not null;index" json:"match_date"`
 	HomeScore        *int16    `json:"home_score"`
 	AwayScore        *int16    `json:"away_score"`

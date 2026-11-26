@@ -55,12 +55,22 @@ func main() {
 	})
 
 	leagues := handlers.NewLeagueHandler(db)
-	g := api.Group("/leagues")
-	g.Get("/", leagues.List)
-	g.Post("/", leagues.Create)
-	g.Get("/:id", leagues.Get)
-	g.Put("/:id", leagues.Update)
-	g.Delete("/:id", leagues.Delete)
+	lg := api.Group("/leagues")
+	lg.Get("/", leagues.List)
+	lg.Post("/", leagues.Create)
+	lg.Get("/:id", leagues.Get)
+	lg.Put("/:id", leagues.Update)
+	lg.Delete("/:id", leagues.Delete)
+
+	teams := handlers.NewTeamHandler(db)
+	tg := api.Group("/teams")
+	tg.Get("/", teams.List)
+	tg.Get("/:id", teams.Get)
+
+	matches := handlers.NewMatchHandler(db)
+	mg := api.Group("/matches")
+	mg.Get("/", matches.List)
+	mg.Get("/:id", matches.Get)
 
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
