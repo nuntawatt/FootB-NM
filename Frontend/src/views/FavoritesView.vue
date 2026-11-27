@@ -11,8 +11,11 @@
         </div>
       </div>
 
-      <div v-if="loading" class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-        กำลังโหลดทีมโปรด...
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div v-for="i in 3" :key="i" class="card p-5 space-y-3">
+          <div class="skeleton h-24 w-24 rounded-full mx-auto" />
+          <div class="skeleton h-4 w-2/3 mx-auto" />
+        </div>
       </div>
 
       <!-- 3-Column Grid -->
@@ -54,7 +57,7 @@
             <button type="button" class="text-sm text-neutral-400 hover:text-white" @click="showModal = false">✕</button>
           </div>
 
-          <div class="overflow-y-auto space-y-2 flex-1">
+          <div v-if="availableTeams.length > 0" class="overflow-y-auto space-y-2 flex-1">
             <button
               v-for="team in availableTeams"
               :key="team.id"
@@ -69,6 +72,10 @@
               <span class="font-semibold text-sm">{{ team.name }}</span>
             </button>
           </div>
+
+          <p v-else class="text-xs text-center py-6" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
+            ไม่พบรายชื่อทีมจาก Backend API
+          </p>
         </div>
       </div>
     </div>
@@ -82,7 +89,6 @@ import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 import { fetchTeams } from '@/api/teams'
 import { fetchFavorites, addFavorite, removeFavorite } from '@/api/favorites'
-import { mockFavorites } from '@/mock/favorites'
 import type { FavoriteTeamCard as FavCardType, Team } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import FavoriteTeamCard from '@/components/favorites/FavoriteTeamCard.vue'
@@ -111,7 +117,7 @@ async function loadFavorites() {
     const teams = await fetchFavorites()
     favorites.value = teams.map(toCard)
   } catch {
-    favorites.value = [...mockFavorites]
+    favorites.value = []
   } finally {
     loading.value = false
   }
@@ -122,7 +128,7 @@ onMounted(async () => {
   try {
     availableTeams.value = await fetchTeams()
   } catch {
-    availableTeams.value = mockFavorites.map((f) => f.team)
+    availableTeams.value = []
   }
 })
 
@@ -132,10 +138,10 @@ async function handleAddFavorite(team: Team) {
   if (!favorites.value.some((f) => f.team.id === team.id)) {
     try {
       await addFavorite(team.id)
+      favorites.value.push(toCard(team))
     } catch {
-      // still update UI if backend offline
+      // ignore if backend failed
     }
-    favorites.value.push(toCard(team))
   }
   showModal.value = false
 }
@@ -143,9 +149,9 @@ async function handleAddFavorite(team: Team) {
 async function handleRemoveFavorite(teamId: string) {
   try {
     await removeFavorite(teamId)
+    favorites.value = favorites.value.filter((f) => f.team.id !== teamId)
   } catch {
-    // ignore if offline
+    // ignore if backend failed
   }
-  favorites.value = favorites.value.filter((f) => f.team.id !== teamId)
 }
 </script>

@@ -1,7 +1,7 @@
 <template>
   <MainLayout>
-    <div v-if="loading" class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-      กำลังโหลดข้อมูลแมตช์...
+    <div v-if="loading" class="card p-4 space-y-3">
+      <div v-for="i in 4" :key="i" class="skeleton h-16 w-full" />
     </div>
 
     <div v-else-if="error" class="card p-6 text-center space-y-3">
@@ -13,8 +13,6 @@
       <MatchHeader
         :match="match"
         :venue="venue"
-        :ht-home="extraMock.ht_home_score"
-        :ht-away="extraMock.ht_away_score"
       />
 
       <!-- Venue & Broadcast Info -->
@@ -37,42 +35,33 @@
         </div>
       </div>
 
-      <!-- Events & Statistics (Mock) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <MatchEvents :events="extraMock.events" />
-        <MatchStats :stats="extraMock.stats" />
-      </div>
-
       <!-- Lineups -->
       <LineupTable
+        v-if="lineups"
         :home-team="match.home_team"
         :away-team="match.away_team"
-        :home-lineup="homeStarting"
-        :away-lineup="awayStarting"
-        :home-subs="lineups?.home.substitutes"
-        :away-subs="lineups?.away.substitutes"
-        :home-formation="lineups?.home.formation"
-        :away-formation="lineups?.away.formation"
-        :home-coach="lineups?.home.coach_name"
-        :away-coach="lineups?.away.coach_name"
+        :home-lineup="lineups.home.starting"
+        :away-lineup="lineups.away.starting"
+        :home-subs="lineups.home.substitutes"
+        :away-subs="lineups.away.substitutes"
+        :home-formation="lineups.home.formation"
+        :away-formation="lineups.away.formation"
+        :home-coach="lineups.home.coach_name"
+        :away-coach="lineups.away.coach_name"
       />
     </div>
   </MainLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { fetchMatch, fetchMatchLineups, fetchMatchVenue } from '@/api/matches'
-import { mockLineup } from '@/mock/squad'
-import { mockMatchExtra } from '@/mock/matchDetails'
-import type { LineupPlayer, Match, MatchLineup, VenueInfo } from '@/types'
+import type { Match, MatchLineup, VenueInfo } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import MatchHeader from '@/components/matches/MatchHeader.vue'
-import MatchEvents from '@/components/matches/MatchEvents.vue'
-import MatchStats from '@/components/matches/MatchStats.vue'
 import LineupTable from '@/components/matches/LineupTable.vue'
 
 const route = useRoute()
@@ -84,17 +73,6 @@ const lineups = ref<MatchLineup | null>(null)
 const venue = ref<VenueInfo | null>(null)
 const loading = ref(false)
 const error = ref('')
-const extraMock = mockMatchExtra
-
-const homeStarting = computed<LineupPlayer[]>(() => {
-  if (lineups.value?.home.starting.length) return lineups.value.home.starting
-  return mockLineup.home.map((p) => ({ ...p, rating: p.rating ? String(p.rating) : undefined }))
-})
-
-const awayStarting = computed<LineupPlayer[]>(() => {
-  if (lineups.value?.away.starting.length) return lineups.value.away.starting
-  return mockLineup.away.map((p) => ({ ...p, rating: p.rating ? String(p.rating) : undefined }))
-})
 
 async function loadMatch() {
   const id = String(route.params.id)

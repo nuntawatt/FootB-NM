@@ -159,46 +159,7 @@ export interface VenueInfo {
   broadcast: string[]
 }
 
-// === Match Events & Stats (Mock — ยังไม่มี API) ===
-
-export interface MatchEvent {
-  id: string
-  minute: number
-  type: 'goal' | 'yellow_card' | 'red_card'
-  team: 'home' | 'away'
-  player_name: string
-  assist_name?: string
-}
-
-export interface MatchStatItem {
-  label: string
-  home: number
-  away: number
-  unit?: string
-}
-
-export interface MatchExtraMock {
-  ht_home_score: number
-  ht_away_score: number
-  events: MatchEvent[]
-  stats: MatchStatItem[]
-}
-
-// === News (GET /news) ===
-
-export interface NewsArticle {
-  id: string
-  title: string
-  summary: string
-  content: string
-  image_url: string
-  category: string
-  published_at: string
-  author?: string
-  redirect_url?: string
-}
-
-// === Hero Highlights (GET /heroes) ===
+// === Hero Highlights / News (GET /heroes, GET /news) ===
 
 export interface HeroHighlight {
   id: string
@@ -210,33 +171,16 @@ export interface HeroHighlight {
   redirect_url?: string
 }
 
-// === Legacy / Fallback Mock Types ===
-
-export interface SquadPlayer {
-  position: string
-  number: number
-  name: string
-  rating?: number
-}
-
-export interface TeamDetail {
-  coach_name: string
-  coach_image: string
-  form: FormMatch[]
-  squad: SquadPlayer[]
-}
-
-export interface FormMatch {
-  score: string
-  opponent_logo: string
-  result: 'win' | 'draw' | 'loss'
-}
-
-export interface HeroItem {
-  id: number
+export interface NewsArticle {
+  id: string
   title: string
-  image: string
+  summary: string
+  content: string
+  image_url: string
   category: string
+  published_at: string
+  author?: string
+  redirect_url?: string
 }
 
 export interface FavoriteTeamCard {

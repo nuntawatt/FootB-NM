@@ -18,15 +18,6 @@
           <img :src="league.logo_url" :alt="league.name" class="w-full h-full object-contain" />
         </div>
         <span class="text-sm truncate flex-1">{{ league.name }}</span>
-        <RouterLink
-          v-if="resolvedId(league.name)"
-          :to="`/leagues/${resolvedId(league.name)}`"
-          @click.stop
-          title="ดูรายละเอียดลีก"
-          class="text-[10px] px-1.5 py-0.5 rounded bg-sport-red/15 text-sport-red hover:bg-sport-red hover:text-white transition-colors shrink-0"
-        >
-          {{ resolvedShortName(league.name) || 'ข้อมูล' }}
-        </RouterLink>
       </button>
     </div>
 
@@ -47,14 +38,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useLeagueStore } from '@/stores/league'
 import { useSeasonStore } from '@/stores/season'
 import { useThemeStore } from '@/stores/theme'
-import { fetchLeagues } from '@/api/leagues'
-import type { League } from '@/types'
 
 const leagueStore = useLeagueStore()
 const seasonStore = useSeasonStore()
@@ -62,28 +49,4 @@ const themeStore = useThemeStore()
 
 const { leagues, selectedLeague } = storeToRefs(leagueStore)
 const { isDark } = storeToRefs(themeStore)
-
-const apiLeagues = ref<League[]>([])
-
-onMounted(async () => {
-  try {
-    const list = await fetchLeagues()
-    apiLeagues.value = list.sort((a, b) => a.sort_order - b.sort_order)
-  } catch {
-    // ignore if offline
-  }
-})
-
-function findApiLeague(name: string): League | undefined {
-  const target = name.toLowerCase()
-  return apiLeagues.value.find((l) => l.name.toLowerCase() === target || l.name.toLowerCase().includes(target))
-}
-
-function resolvedId(name: string) {
-  return findApiLeague(name)?.id
-}
-
-function resolvedShortName(name: string) {
-  return findApiLeague(name)?.short_name
-}
 </script>

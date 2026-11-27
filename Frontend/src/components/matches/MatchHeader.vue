@@ -58,16 +58,9 @@
             {{ formatTime(match.match_date) }} น.
           </div>
 
-          <!-- Half-Time & Penalty -->
-          <div v-if="match.status === 'finished' || match.status === 'live'" class="flex flex-wrap items-center justify-center gap-2 text-xs">
-            <span :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-              ครึ่งแรก (HT): <strong class="tabular-nums">{{ htHome }} - {{ htAway }}</strong>
-              <span class="text-[10px] opacity-70 ml-1">(Mock)</span>
-            </span>
-            <span
-              v-if="match.home_penalty_score !== null && match.away_penalty_score !== null"
-              class="px-2 py-0.5 rounded bg-neutral-700 text-white font-bold"
-            >
+          <!-- Penalty -->
+          <div v-if="(match.status === 'finished' || match.status === 'live') && match.home_penalty_score !== null && match.away_penalty_score !== null" class="flex flex-wrap items-center justify-center gap-2 text-xs">
+            <span class="px-2 py-0.5 rounded bg-neutral-700 text-white font-bold">
               จุดโทษ: {{ match.home_penalty_score }} - {{ match.away_penalty_score }}
             </span>
           </div>
@@ -106,8 +99,6 @@ import type { Match, VenueInfo } from '@/types'
 const props = defineProps<{
   match: Match
   venue?: VenueInfo | null
-  htHome: number
-  htAway: number
 }>()
 
 const themeStore = useThemeStore()

@@ -7,12 +7,6 @@
           <span class="w-1.5 h-6 bg-sport-red rounded-full" />
           <h1 class="text-xl sm:text-2xl font-extrabold">ข่าวสารฟุตบอล</h1>
         </div>
-        <span
-          v-if="usingMock"
-          class="text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 font-semibold"
-        >
-          Mock Data (ไม่สามารถเชื่อมต่อ Backend)
-        </span>
       </div>
 
       <!-- Dynamic Category Filter Tabs -->
@@ -34,6 +28,11 @@
       <!-- Loading -->
       <div v-if="loading" class="card p-4 space-y-3">
         <div v-for="i in 4" :key="i" class="skeleton h-16 w-full" />
+      </div>
+
+      <div v-else-if="error" class="card p-6 text-center space-y-3">
+        <p class="text-sm text-sport-red font-medium">{{ error }}</p>
+        <button type="button" class="btn-primary text-xs" @click="loadNews">ลองใหม่อีกครั้ง</button>
       </div>
 
       <template v-else-if="filteredArticles.length > 0">
@@ -124,7 +123,6 @@ import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { fetchNews } from '@/api/news'
-import { mockNews } from '@/mock/thaileague'
 import type { NewsArticle } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import NewsPreviewModal from '@/components/news/NewsPreviewModal.vue'
@@ -135,7 +133,7 @@ const { isDark } = storeToRefs(themeStore)
 const selectedCategory = ref('ทั้งหมด')
 const allArticles = ref<NewsArticle[]>([])
 const loading = ref(false)
-const usingMock = ref(false)
+const error = ref('')
 const activeArticle = ref<NewsArticle | null>(null)
 
 const categories = computed(() => {
@@ -148,34 +146,14 @@ const filteredArticles = computed(() => {
   return allArticles.value.filter((a) => a.category === selectedCategory.value)
 })
 
-function mapMockNews(): NewsArticle[] {
-  return mockNews.map((n) => ({
-    id: String(n.id),
-    title: n.title,
-    summary: n.summary,
-    content: n.content,
-    image_url: n.image,
-    category: n.category,
-    published_at: n.date,
-    author: n.author,
-    redirect_url: n.redirect_url,
-  }))
-}
-
 async function loadNews() {
   loading.value = true
-  usingMock.value = false
+  error.value = ''
   try {
-    const data = await fetchNews(20)
-    if (Array.isArray(data) && data.length > 0) {
-      allArticles.value = data
-    } else {
-      allArticles.value = mapMockNews()
-      usingMock.value = true
-    }
+    allArticles.value = await fetchNews(20)
   } catch {
-    allArticles.value = mapMockNews()
-    usingMock.value = true
+    allArticles.value = []
+    error.value = 'ไม่สามารถโหลดข่าวสารจาก Backend API ได้'
   } finally {
     loading.value = false
   }

@@ -1,5 +1,6 @@
 <template>
   <section
+    v-if="items.length > 0"
     @click="navigateToHero"
     class="relative w-full h-64 sm:h-80 md:h-[400px] overflow-hidden bg-black border-b-2 border-sport-red cursor-pointer group"
   >
@@ -76,26 +77,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchHeroes } from '@/api/heroes'
-import { mockHeroItems } from '@/mock/hero'
 import type { HeroHighlight } from '@/types'
 
 const router = useRouter()
 
-const fallbackItems: HeroHighlight[] = mockHeroItems.map((h) => ({
-  id: String(h.id),
-  title: h.title,
-  subtitle: '',
-  image_url: h.image,
-  tag: h.category,
-  redirect_url: '/fixtures',
-}))
-
-const items = ref<HeroHighlight[]>(fallbackItems)
+const items = ref<HeroHighlight[]>([])
 const currentIndex = ref(0)
-const currentItem = computed(() => items.value[currentIndex.value] ?? fallbackItems[0])
+const currentItem = computed(() => items.value[currentIndex.value])
 
 function navigateToHero() {
   const item = currentItem.value
+  if (!item) return
   const url = item.redirect_url || (item.match_id ? `/matches/${item.match_id}` : '/fixtures')
   if (/^https?:\/\//i.test(url)) {
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -105,10 +97,12 @@ function navigateToHero() {
 }
 
 function nextSlide() {
+  if (items.value.length === 0) return
   currentIndex.value = (currentIndex.value + 1) % items.value.length
 }
 
 function prevSlide() {
+  if (items.value.length === 0) return
   currentIndex.value = (currentIndex.value - 1 + items.value.length) % items.value.length
 }
 
@@ -119,11 +113,11 @@ onMounted(async () => {
     const apiHeroes = await fetchHeroes()
     if (apiHeroes.length > 0) {
       items.value = apiHeroes
+      timer = setInterval(nextSlide, 6000)
     }
   } catch {
-    // keep fallback
+    items.value = []
   }
-  timer = setInterval(nextSlide, 6000)
 })
 
 onUnmounted(() => {

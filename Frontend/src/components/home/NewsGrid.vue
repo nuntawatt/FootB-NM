@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div v-else-if="newsList.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <article
         v-for="news in newsList"
         :key="news.id"
@@ -52,6 +52,10 @@
       </article>
     </div>
 
+    <div v-else class="card p-6 text-center text-xs" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
+      ยังไม่มีข่าวสารในขณะนี้
+    </div>
+
     <!-- News Preview Card Modal -->
     <NewsPreviewModal
       :article="selectedArticle"
@@ -66,38 +70,22 @@ import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { fetchNews } from '@/api/news'
-import { mockNews } from '@/mock/thaileague'
 import type { NewsArticle } from '@/types'
 import NewsPreviewModal from '@/components/news/NewsPreviewModal.vue'
 
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
 
-const fallbackNews: NewsArticle[] = mockNews.slice(0, 3).map((n) => ({
-  id: String(n.id),
-  title: n.title,
-  summary: n.summary,
-  content: n.content,
-  image_url: n.image,
-  category: n.category,
-  published_at: n.date,
-  author: n.author,
-  redirect_url: n.redirect_url,
-}))
-
-const newsList = ref<NewsArticle[]>(fallbackNews)
+const newsList = ref<NewsArticle[]>([])
 const loading = ref(false)
 const selectedArticle = ref<NewsArticle | null>(null)
 
 onMounted(async () => {
   loading.value = true
   try {
-    const apiNews = await fetchNews(3)
-    if (apiNews.length > 0) {
-      newsList.value = apiNews
-    }
+    newsList.value = await fetchNews(3)
   } catch {
-    // keep fallback mock
+    newsList.value = []
   } finally {
     loading.value = false
   }

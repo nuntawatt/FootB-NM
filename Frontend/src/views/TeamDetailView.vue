@@ -1,15 +1,20 @@
 <template>
   <MainLayout>
-    <div v-if="loading" class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-      กำลังโหลดข้อมูลทีม...
+    <div v-if="loading" class="card p-4 space-y-3">
+      <div v-for="i in 4" :key="i" class="skeleton h-16 w-full" />
+    </div>
+
+    <div v-else-if="error" class="card p-6 text-center space-y-3">
+      <p class="text-sm text-sport-red font-medium">{{ error }}</p>
+      <RouterLink to="/" class="btn-primary inline-block text-xs">กลับหน้าแรก</RouterLink>
     </div>
 
     <div v-else-if="team" class="space-y-5">
       <!-- Team Header + Coach -->
       <TeamHeader
         :team="team"
-        :coach-name="coach?.name || mockDetail.coach_name"
-        :coach-image="coach?.photo_url || mockDetail.coach_image"
+        :coach-name="coach?.name || 'ไม่ระบุ'"
+        :coach-image="coach?.photo_url || ''"
         :coach-nationality="coach?.nationality"
       />
 
@@ -27,13 +32,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import { useThemeStore } from '@/stores/theme'
+import { useRoute, RouterLink } from 'vue-router'
 import { fetchTeam, fetchTeamCoach, fetchTeamForm, fetchTeamSquad } from '@/api/teams'
 import { fetchMatches } from '@/api/matches'
-import { mockTeamDetail } from '@/mock/teamDetail'
-import { mockFavorites } from '@/mock/favorites'
 import type { ApiFormMatch, Coach, Match, Player, Team } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import TeamHeader from '@/components/teams/TeamHeader.vue'
@@ -42,8 +43,6 @@ import NextMatch from '@/components/teams/NextMatch.vue'
 import SquadList from '@/components/teams/SquadList.vue'
 
 const route = useRoute()
-const themeStore = useThemeStore()
-const { isDark } = storeToRefs(themeStore)
 
 const team = ref<Team | null>(null)
 const coach = ref<Coach | null>(null)
@@ -51,11 +50,12 @@ const form = ref<ApiFormMatch[]>([])
 const players = ref<Player[]>([])
 const nextMatch = ref<Match | null>(null)
 const loading = ref(false)
-const mockDetail = mockTeamDetail
+const error = ref('')
 
 async function loadTeamData() {
   const id = String(route.params.id)
   loading.value = true
+  error.value = ''
   try {
     const [teamRes, coachRes, formRes, squadRes, matchesRes] = await Promise.allSettled([
       fetchTeam(id),
@@ -68,26 +68,14 @@ async function loadTeamData() {
     if (teamRes.status === 'fulfilled') {
       team.value = teamRes.value
     } else {
-      team.value = mockFavorites.find((f) => f.team.id === id)?.team ?? mockFavorites[0].team
+      team.value = null
+      error.value = 'ไม่พบข้อมูลทีม หรือไม่สามารถเชื่อมต่อ Backend ได้'
+      return
     }
 
     coach.value = coachRes.status === 'fulfilled' ? coachRes.value : null
     form.value = formRes.status === 'fulfilled' && Array.isArray(formRes.value) ? formRes.value : []
-
-    if (squadRes.status === 'fulfilled' && squadRes.value.length > 0) {
-      players.value = squadRes.value
-    } else {
-      players.value = mockDetail.squad.map((s, idx) => ({
-        id: String(idx),
-        team_id: id,
-        name: s.name,
-        number: s.number,
-        position: s.position,
-        age: null,
-        nationality: 'Thailand',
-        photo_url: '',
-      }))
-    }
+    players.value = squadRes.status === 'fulfilled' && Array.isArray(squadRes.value) ? squadRes.value : []
 
     if (matchesRes.status === 'fulfilled') {
       nextMatch.value =

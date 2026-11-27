@@ -12,16 +12,15 @@
           <img :src="selectedLeague.logo_url" :alt="selectedLeague.name" class="w-8 h-8 object-contain" />
           <h1 class="text-base sm:text-lg font-extrabold">{{ selectedLeague.name }}</h1>
         </div>
-        <span
-          v-if="usingMock"
-          class="text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 font-semibold"
-        >
-          ข้อมูลตัวอย่าง (Fallback)
-        </span>
       </div>
 
-      <div v-if="loading" class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-        กำลังคำนวณตารางคะแนน...
+      <div v-if="loading" class="card p-4 space-y-2.5">
+        <div v-for="i in 8" :key="i" class="skeleton h-9 w-full" />
+      </div>
+
+      <div v-else-if="error" class="card p-6 text-center space-y-3">
+        <p class="text-sm text-sport-red font-medium">{{ error }}</p>
+        <button type="button" class="btn-primary text-xs" @click="loadStandings">ลองใหม่อีกครั้ง</button>
       </div>
 
       <StandingsTable v-else-if="rows.length > 0" :rows="rows" />
@@ -41,7 +40,6 @@ import { useSeasonStore } from '@/stores/season'
 import { useThemeStore } from '@/stores/theme'
 import { fetchLeagues } from '@/api/leagues'
 import { fetchStandings } from '@/api/standings'
-import { mockStandings } from '@/mock/standings'
 import type { League, StandingRow } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import DateNavigator from '@/components/fixtures/DateNavigator.vue'
@@ -58,7 +56,7 @@ const { isDark } = storeToRefs(themeStore)
 const apiLeagues = ref<League[]>([])
 const rows = ref<StandingRow[]>([])
 const loading = ref(false)
-const usingMock = ref(false)
+const error = ref('')
 
 async function resolveLeagueId(): Promise<string | undefined> {
   if (apiLeagues.value.length === 0) {
@@ -77,48 +75,43 @@ async function resolveLeagueId(): Promise<string | undefined> {
 
 async function loadStandings() {
   loading.value = true
-  usingMock.value = false
+  error.value = ''
   try {
     const leagueId = await resolveLeagueId()
     const apiRows = await fetchStandings(selectedSeason.value || 2024, leagueId)
-    if (apiRows.length > 0) {
-      const total = apiRows.length
-      rows.value = apiRows.map((r) => ({
-        position: r.rank,
-        team: {
-          id: r.team_id,
-          league_id: leagueId || '',
-          name: r.team_name,
-          short_name: '',
-          logo_url: r.team_logo,
-          created_at: '',
-          updated_at: '',
-        },
-        played: r.played,
-        won: r.won,
-        drawn: r.drawn,
-        lost: r.lost,
-        goals_for: r.goals_for,
-        goals_against: r.goals_against,
-        goal_difference: r.goal_diff,
-        points: r.points,
-        form: r.form,
-        zone:
-          r.rank <= 2
-            ? 'acl'
-            : r.rank === 3
-              ? 'acl2'
-              : total >= 10 && r.rank >= total - 1
-                ? 'relegation'
-                : undefined,
-      }))
-    } else {
-      rows.value = mockStandings[selectedLeague.value.id] ?? mockStandings['thai-league-1']
-      usingMock.value = true
-    }
+    const total = apiRows.length
+    rows.value = apiRows.map((r) => ({
+      position: r.rank,
+      team: {
+        id: r.team_id,
+        league_id: leagueId || '',
+        name: r.team_name,
+        short_name: '',
+        logo_url: r.team_logo,
+        created_at: '',
+        updated_at: '',
+      },
+      played: r.played,
+      won: r.won,
+      drawn: r.drawn,
+      lost: r.lost,
+      goals_for: r.goals_for,
+      goals_against: r.goals_against,
+      goal_difference: r.goal_diff,
+      points: r.points,
+      form: r.form,
+      zone:
+        r.rank <= 2
+          ? 'acl'
+          : r.rank === 3
+            ? 'acl2'
+            : total >= 10 && r.rank >= total - 1
+              ? 'relegation'
+              : undefined,
+    }))
   } catch {
-    rows.value = mockStandings[selectedLeague.value.id] ?? mockStandings['thai-league-1']
-    usingMock.value = true
+    rows.value = []
+    error.value = 'ไม่สามารถโหลดตารางคะแนนจาก Backend API ได้'
   } finally {
     loading.value = false
   }

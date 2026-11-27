@@ -13,7 +13,11 @@
       </RouterLink>
     </div>
 
-    <div class="divide-y" :class="isDark ? 'divide-sport-border/60' : 'divide-gray-100'">
+    <div v-if="loading" class="p-4 space-y-2">
+      <div v-for="i in 5" :key="i" class="skeleton h-8 w-full" />
+    </div>
+
+    <div v-else-if="topFive.length > 0" class="divide-y" :class="isDark ? 'divide-sport-border/60' : 'divide-gray-100'">
       <RouterLink
         v-for="row in topFive"
         :key="row.team_id"
@@ -38,6 +42,10 @@
         </div>
       </RouterLink>
     </div>
+
+    <div v-else class="p-6 text-center text-xs" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
+      ยังไม่มีข้อมูลตารางคะแนน
+    </div>
   </div>
 </template>
 
@@ -48,39 +56,24 @@ import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { useSeasonStore } from '@/stores/season'
 import { fetchStandings } from '@/api/standings'
-import { mockStandings } from '@/mock/standings'
 import type { ApiStandingsRow } from '@/types'
 
 const themeStore = useThemeStore()
 const seasonStore = useSeasonStore()
 const { isDark } = storeToRefs(themeStore)
 
-const fallback: ApiStandingsRow[] = mockStandings['thai-league-1'].slice(0, 5).map((r) => ({
-  rank: r.position,
-  team_id: r.team.id,
-  team_name: r.team.name,
-  team_logo: r.team.logo_url,
-  played: r.played,
-  won: r.won,
-  drawn: r.drawn,
-  lost: r.lost,
-  goals_for: r.goals_for,
-  goals_against: r.goals_against,
-  goal_diff: r.goal_difference,
-  points: r.points,
-  form: [],
-}))
-
-const topFive = ref<ApiStandingsRow[]>(fallback)
+const topFive = ref<ApiStandingsRow[]>([])
+const loading = ref(false)
 
 onMounted(async () => {
+  loading.value = true
   try {
     const data = await fetchStandings(seasonStore.selectedSeason || 2024)
-    if (data.length > 0) {
-      topFive.value = data.slice(0, 5)
-    }
+    topFive.value = data.slice(0, 5)
   } catch {
-    // keep fallback
+    topFive.value = []
+  } finally {
+    loading.value = false
   }
 })
 </script>
