@@ -14,40 +14,73 @@
     </div>
 
     <div class="divide-y" :class="isDark ? 'divide-sport-border/60' : 'divide-gray-100'">
-      <div
+      <RouterLink
         v-for="row in topFive"
-        :key="row.position"
-        class="flex items-center justify-between px-4 py-2.5 text-xs sm:text-sm"
+        :key="row.team_id"
+        :to="`/teams/${row.team_id}`"
+        class="flex items-center justify-between px-4 py-2.5 text-xs sm:text-sm transition-colors"
+        :class="isDark ? 'hover:bg-sport-hover/50' : 'hover:bg-gray-50'"
       >
         <div class="flex items-center gap-2.5 min-w-0">
           <span
             class="w-5 text-center font-extrabold tabular-nums"
-            :class="row.position <= 2 ? 'text-sport-red' : (isDark ? 'text-neutral-400' : 'text-gray-500')"
+            :class="row.rank <= 2 ? 'text-sport-red' : (isDark ? 'text-neutral-400' : 'text-gray-500')"
           >
-            {{ row.position }}
+            {{ row.rank }}
           </span>
-          <img :src="row.team.logo_url" :alt="row.team.name" class="w-5 h-5 object-contain shrink-0" />
-          <span class="font-semibold truncate">{{ row.team.name }}</span>
+          <img :src="row.team_logo" :alt="row.team_name" class="w-5 h-5 object-contain shrink-0" />
+          <span class="font-semibold truncate">{{ row.team_name }}</span>
         </div>
 
         <div class="flex items-center gap-4 shrink-0 tabular-nums">
           <span :class="isDark ? 'text-neutral-400' : 'text-gray-500'">{{ row.played }} นัด</span>
           <span class="font-extrabold text-sport-red w-6 text-right">{{ row.points }}</span>
         </div>
-      </div>
+      </RouterLink>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
+import { useSeasonStore } from '@/stores/season'
+import { fetchStandings } from '@/api/standings'
 import { mockStandings } from '@/mock/standings'
+import type { ApiStandingsRow } from '@/types'
 
 const themeStore = useThemeStore()
+const seasonStore = useSeasonStore()
 const { isDark } = storeToRefs(themeStore)
 
-const topFive = computed(() => mockStandings['thai-league-1'].slice(0, 5))
+const fallback: ApiStandingsRow[] = mockStandings['thai-league-1'].slice(0, 5).map((r) => ({
+  rank: r.position,
+  team_id: r.team.id,
+  team_name: r.team.name,
+  team_logo: r.team.logo_url,
+  played: r.played,
+  won: r.won,
+  drawn: r.drawn,
+  lost: r.lost,
+  goals_for: r.goals_for,
+  goals_against: r.goals_against,
+  goal_diff: r.goal_difference,
+  points: r.points,
+  form: [],
+}))
+
+const topFive = ref<ApiStandingsRow[]>(fallback)
+
+onMounted(async () => {
+  try {
+    const data = await fetchStandings(seasonStore.selectedSeason || 2024)
+    if (data.length > 0) {
+      topFive.value = data.slice(0, 5)
+    }
+  } catch {
+    // keep fallback
+  }
+})
 </script>

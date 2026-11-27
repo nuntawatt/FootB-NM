@@ -1,8 +1,7 @@
 <template>
   <div class="card overflow-hidden">
-    <div class="bg-white text-gray-900 px-4 py-3 text-center font-extrabold text-base border-b border-gray-200 flex items-center justify-center gap-2">
-      <span>11 ตัวจริงล่าสุด</span>
-      <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-gray-200 text-gray-600">Mock</span>
+    <div class="bg-dark px-4 py-3 text-center font-extrabold text-base border-b border-gray-200">
+      รายชื่อนักเตะในทีม ({{ players.length }})
     </div>
 
     <div class="overflow-x-auto">
@@ -12,26 +11,33 @@
             <th class="py-3 px-4 text-left">ตำแหน่ง</th>
             <th class="py-3 px-3 text-center">หมายเลข</th>
             <th class="py-3 px-4 text-left">ชื่อผู้เล่น</th>
-            <th class="py-3 px-4 text-center">เรทติ้ง</th>
+            <th class="py-3 px-4 text-center hidden sm:table-cell">อายุ</th>
+            <th class="py-3 px-4 text-left hidden sm:table-cell">สัญชาติ</th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="p in squad"
-            :key="p.number"
+            v-for="p in players"
+            :key="p.id"
             class="border-b last:border-b-0"
             :class="isDark ? 'border-sport-border/50 hover:bg-sport-hover/50' : 'border-gray-100 hover:bg-gray-50'"
           >
-            <td class="py-2.5 px-4 font-bold text-sport-red">{{ p.position }}</td>
-            <td class="py-2.5 px-3 text-center tabular-nums">{{ p.number }}</td>
-            <td class="py-2.5 px-4 font-medium">{{ p.name }}</td>
-            <td class="py-2.5 px-4 text-center">
-              <span
-                class="inline-block w-7 py-0.5 rounded text-xs font-bold text-white"
-                :class="(p.rating ?? 6) >= 7 ? 'bg-emerald-600' : 'bg-neutral-600'"
-              >
-                {{ p.rating ?? '-' }}
-              </span>
+            <td class="py-2.5 px-4 font-bold text-sport-red">{{ p.position || '-' }}</td>
+            <td class="py-2.5 px-3 text-center tabular-nums font-semibold">{{ p.number ?? '-' }}</td>
+            <td class="py-2.5 px-4">
+              <div class="flex items-center gap-2.5">
+                <img
+                  v-if="p.photo_url"
+                  :src="p.photo_url"
+                  :alt="p.name"
+                  class="w-7 h-7 rounded-full object-cover bg-neutral-800 shrink-0"
+                />
+                <span class="font-medium">{{ p.name }}</span>
+              </div>
+            </td>
+            <td class="py-2.5 px-4 text-center tabular-nums hidden sm:table-cell">{{ p.age ?? '-' }}</td>
+            <td class="py-2.5 px-4 hidden sm:table-cell" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
+              {{ p.nationality || '-' }}
             </td>
           </tr>
         </tbody>
@@ -43,10 +49,10 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
-import type { SquadPlayer } from '@/types'
+import type { Player } from '@/types'
 
 defineProps<{
-  squad: SquadPlayer[]
+  players: Player[]
 }>()
 
 const themeStore = useThemeStore()

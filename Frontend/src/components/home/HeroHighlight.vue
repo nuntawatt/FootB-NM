@@ -1,7 +1,7 @@
 <template>
   <section class="relative w-full h-64 sm:h-80 md:h-[400px] overflow-hidden bg-black border-b-2 border-sport-red">
     <img
-      :src="currentItem.image"
+      :src="currentItem.image_url"
       :alt="currentItem.title"
       class="w-full h-full object-cover opacity-75 transition-all duration-500"
     />
@@ -34,14 +34,16 @@
     <div class="absolute bottom-0 left-0 right-0 max-w-[1400px] mx-auto px-4 pb-6 pt-12">
       <div class="flex items-center gap-2 mb-2.5">
         <span class="px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wider bg-sport-red text-white rounded">
-          {{ currentItem.category }}
+          {{ currentItem.tag }}
         </span>
-        <span class="text-xs text-neutral-300 font-medium">THAI LEAGUE OFFICIAL STYLE (Mock)</span>
       </div>
 
       <h1 class="text-xl sm:text-3xl md:text-4xl font-black text-white leading-tight max-w-3xl drop-shadow-lg">
         {{ currentItem.title }}
       </h1>
+      <p v-if="currentItem.subtitle" class="text-xs sm:text-sm text-neutral-300 mt-1.5 max-w-2xl line-clamp-2">
+        {{ currentItem.subtitle }}
+      </p>
 
       <div class="flex flex-wrap items-center justify-between gap-4 mt-4">
         <!-- Dots -->
@@ -58,10 +60,10 @@
         </div>
 
         <RouterLink
-          to="/fixtures"
+          :to="currentItem.match_id ? `/matches/${currentItem.match_id}` : (currentItem.redirect_url || '/fixtures')"
           class="px-4 py-1.5 rounded-lg text-xs font-bold bg-sport-red hover:bg-sport-red-hover text-white transition-colors shadow-lg"
         >
-          ดูโปรแกรมแข่งขัน →
+          {{ currentItem.match_id ? 'ดูรายละเอียดแมตช์ →' : 'ดูโปรแกรมแข่งขัน →' }}
         </RouterLink>
       </div>
     </div>
@@ -71,23 +73,42 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { fetchHeroes } from '@/api/heroes'
 import { mockHeroItems } from '@/mock/hero'
+import type { HeroHighlight } from '@/types'
 
-const items = mockHeroItems
+const fallbackItems: HeroHighlight[] = mockHeroItems.map((h) => ({
+  id: String(h.id),
+  title: h.title,
+  subtitle: '',
+  image_url: h.image,
+  tag: h.category,
+  redirect_url: '/fixtures',
+}))
+
+const items = ref<HeroHighlight[]>(fallbackItems)
 const currentIndex = ref(0)
-const currentItem = computed(() => items[currentIndex.value])
+const currentItem = computed(() => items.value[currentIndex.value] ?? fallbackItems[0])
 
 function nextSlide() {
-  currentIndex.value = (currentIndex.value + 1) % items.length
+  currentIndex.value = (currentIndex.value + 1) % items.value.length
 }
 
 function prevSlide() {
-  currentIndex.value = (currentIndex.value - 1 + items.length) % items.length
+  currentIndex.value = (currentIndex.value - 1 + items.value.length) % items.value.length
 }
 
 let timer: ReturnType<typeof setInterval> | null = null
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const apiHeroes = await fetchHeroes()
+    if (apiHeroes.length > 0) {
+      items.value = apiHeroes
+    }
+  } catch {
+    // keep fallback
+  }
   timer = setInterval(nextSlide, 6000)
 })
 

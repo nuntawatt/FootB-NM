@@ -82,7 +82,7 @@
         </RouterLink>
       </nav>
 
-      <!-- Right Controls: Theme Toggle + User + Mobile Menu -->
+      <!-- Right Controls: Theme Toggle + User/Auth + Mobile Menu -->
       <div class="flex items-center gap-3 shrink-0">
         <!-- Dark/Light Toggle -->
         <button
@@ -102,13 +102,47 @@
           </svg>
         </button>
 
-        <!-- User Profile (Mock) -->
-        <div class="hidden sm:flex items-center gap-2">
-          <span class="text-xs font-medium" :class="isDark ? 'text-neutral-400' : 'text-gray-600'">username</span>
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold border"
-            :class="isDark ? 'bg-neutral-700 text-neutral-300 border-sport-border' : 'bg-gray-200 text-gray-700 border-gray-300'">
-            U
-          </div>
+        <!-- Authenticated User -->
+        <div v-if="authStore.isAuthenticated && authStore.user" class="hidden sm:flex items-center gap-2">
+          <RouterLink
+            to="/profile"
+            class="flex items-center gap-2 px-2 py-1 rounded-lg transition-colors"
+            :class="isDark ? 'hover:bg-sport-card' : 'hover:bg-gray-100'"
+            title="ดูโปรไฟล์"
+          >
+            <img
+              :src="authStore.user.avatar_url"
+              :alt="authStore.user.username"
+              class="w-8 h-8 rounded-full object-cover border border-sport-red"
+            />
+            <span class="text-xs font-semibold max-w-[100px] truncate">{{ authStore.user.username }}</span>
+          </RouterLink>
+          <button
+            type="button"
+            @click="showLogoutModal = true"
+            class="text-[11px] px-2 py-1 rounded border border-sport-border hover:border-sport-red hover:text-sport-red transition-colors"
+          >
+            ออก
+          </button>
+        </div>
+
+        <!-- Login / Register Links -->
+        <div v-else class="hidden sm:flex items-center gap-2">
+          <RouterLink
+            to="/login"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-sport-red hover:bg-sport-red-hover text-white transition-colors"
+          >
+            เข้าสู่ระบบ
+          </RouterLink>
+          <RouterLink
+            to="/register"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors"
+            :class="isDark
+              ? 'border-sport-border text-neutral-200 hover:border-sport-red hover:text-sport-red'
+              : 'border-gray-300 text-gray-700 hover:border-sport-red hover:text-sport-red'"
+          >
+            สมัครสมาชิก
+          </RouterLink>
         </div>
 
         <!-- Mobile Menu Button -->
@@ -144,8 +178,47 @@
       >
         {{ item.label }}
       </RouterLink>
+      <div v-if="!authStore.isAuthenticated" class="pt-1 flex gap-2">
+        <RouterLink
+          to="/login"
+          @click="mobileMenuOpen = false"
+          class="flex-1 text-center px-3 py-2 rounded-lg text-sm font-bold bg-sport-red text-white"
+        >
+          เข้าสู่ระบบ
+        </RouterLink>
+        <RouterLink
+          to="/register"
+          @click="mobileMenuOpen = false"
+          class="flex-1 text-center px-3 py-2 rounded-lg text-sm font-bold border border-sport-red text-sport-red"
+        >
+          สมัครสมาชิก
+        </RouterLink>
+      </div>
+      <div v-else class="pt-1 space-y-1">
+        <RouterLink
+          to="/profile"
+          @click="mobileMenuOpen = false"
+          class="block px-3 py-2 rounded-lg text-sm font-semibold"
+          :class="isDark ? 'text-neutral-200 hover:bg-sport-hover' : 'text-gray-800 hover:bg-gray-100'"
+        >
+          โปรไฟล์ ({{ authStore.user?.username }})
+        </RouterLink>
+        <button
+          type="button"
+          @click="showLogoutModal = true; mobileMenuOpen = false"
+          class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-sport-red"
+        >
+          ออกจากระบบ
+        </button>
+      </div>
     </div>
   </header>
+
+  <LogoutConfirmModal
+    :open="showLogoutModal"
+    @cancel="showLogoutModal = false"
+    @confirm="confirmLogout"
+  />
 </template>
 
 <script setup lang="ts">
@@ -153,27 +226,39 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore } from '@/stores/auth'
 import { fetchTeams } from '@/api/teams'
 import type { Team } from '@/types'
+import LogoutConfirmModal from './LogoutConfirmModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
 const { isDark } = storeToRefs(themeStore)
 
 const navItems = [
   { label: 'หน้าแรก', to: '/' },
   { label: 'โปรแกรมแข่งขัน', to: '/fixtures' },
   { label: 'ตารางคะแนน', to: '/standings' },
+  { label: 'ข่าวสาร', to: '/news' },
   { label: 'ทีมโปรด', to: '/favorites' },
 ]
 
 const searchQuery = ref('')
 const showResults = ref(false)
 const mobileMenuOpen = ref(false)
+const showLogoutModal = ref(false)
 const allTeams = ref<Team[]>([])
 
+function confirmLogout() {
+  showLogoutModal.value = false
+  authStore.logout()
+  router.push('/')
+}
+
 onMounted(async () => {
+  await authStore.loadProfile()
   try {
     allTeams.value = await fetchTeams()
   } catch {

@@ -5,7 +5,9 @@
         <span class="w-1.5 h-5 bg-sport-red rounded-full" />
         <h2 class="text-base sm:text-lg font-extrabold">ข่าวสาร &amp; ไฮไลท์ไทยลีก</h2>
       </div>
-      <span class="text-[11px] px-2 py-0.5 rounded bg-neutral-700/70 text-neutral-300">Mock</span>
+      <RouterLink to="/news" class="text-xs font-semibold text-sport-red hover:underline">
+        ดูข่าวทั้งหมด →
+      </RouterLink>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -44,11 +46,12 @@
 </template>
 
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { mockNews } from '@/mock/thaileague'
 
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
-const newsList = mockNews
+const newsList = mockNews.slice(0, 3)
 </script>

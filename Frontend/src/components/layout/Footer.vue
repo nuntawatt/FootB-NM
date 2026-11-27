@@ -21,6 +21,7 @@
         <RouterLink to="/" class="hover:text-sport-red transition-colors">หน้าแรก</RouterLink>
         <RouterLink to="/fixtures" class="hover:text-sport-red transition-colors">โปรแกรมแข่งขัน</RouterLink>
         <RouterLink to="/standings" class="hover:text-sport-red transition-colors">ตารางคะแนน</RouterLink>
+        <RouterLink to="/news" class="hover:text-sport-red transition-colors">ข่าวสาร</RouterLink>
         <RouterLink to="/favorites" class="hover:text-sport-red transition-colors">ทีมโปรด</RouterLink>
       </nav>
     </div>
