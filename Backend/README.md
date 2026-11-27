@@ -1,44 +1,51 @@
 # Football API Documentation for Frontend
 
-Base URL: `http://localhost:3000/api/v1`  
-LAN Base URL: `http://10.5.2.103:3000/api/v1`  
-Content-Type: `application/json`
+เอกสารประกอบการใช้งาน RESTful API สำหรับระบบฟุตบอลไทยและข้อมูลการแข่งขัน  
+เหมาะสำหรับทีมนักพัฒนา Frontend (Web / Mobile App)
+
+* **Base URL (Local):** `http://localhost:3000/api/v1`
+* **Base URL (LAN / Device Test):** `http://10.5.2.103:3000/api/v1`
+* **Content-Type:** `application/json` (หรือ `multipart/form-data` เมื่ออัปโหลดไฟล์)
+* **Authentication Header:** `Authorization: Bearer <JWT_TOKEN>`
+
+> สำหรับขั้นตอนการติดตั้ง Dependencies, การรัน Database Migration, และคำสั่งรันระบบ โปรดดูที่ [RUN.md](file:///Users/morgorn/Desktop/project/football/Backend/RUN.md)
 
 ---
 
 ## สรุป Endpoints ทั้งหมดในระบบ (API Overview)
 
-| หมวดหมู่ | Method | Endpoint | สิทธิ์เข้าถึง | หน้าที่ |
+| หมวดหมู่ | Method | Endpoint | สิทธิ์เข้าถึง | คำอธิบาย / พารามิเตอร์ |
 |:---|:---:|:---|:---:|:---|
-| **1. Auth & Profile** | `POST` | `/register` | Public | สมัครสมาชิกใหม่ (ส่งคืน JWT Token) |
-| | `POST` | `/login` | Public | เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้ |
-| | `GET` | `/profile` | Bearer Token | ดูข้อมูลโปรไฟล์ส่วนตัว |
-| | `PUT` | `/profile` | Bearer Token | แก้ไขข้อมูลโปรไฟล์ (รองรับ JSON และอัปโหลดไฟล์รูปภาพ) |
-| | `POST` | `/profile/avatar` | Bearer Token | อัปโหลดรูปภาพโปรไฟล์ขึ้น MinIO / Cloud Storage |
-| **2. Seasons** | `GET` | `/seasons` | Public | รายการปี/ฤดูกาลทั้งหมด (2022-2026) |
-| **3. Leagues** | `GET` | `/leagues` | Public | รายชื่อลีกและบอลถ้วยทั้งหมด |
-| | `GET` | `/leagues/:id` | Public | ข้อมูลลีกตาม ID |
-| **4. Teams** | `GET` | `/teams` | Public | รายชื่อทีมทั้งหมด (รองรับ `?league_id=`) |
-| | `GET` | `/teams/:id` | Public | ข้อมูลทีมตาม ID |
-| | `GET` | `/teams/:id/form` | Public | ผลงาน 5 นัดล่าสุดของทีม (W/D/L) |
-| | `GET` | `/teams/:id/coach` | Public | ข้อมูลหัวหน้าผู้ฝึกสอน |
-| | `GET` | `/teams/:id/squad` | Public | รายชื่อนักเตะทั้งหมดของทีม |
-| **5. Matches** | `GET` | `/matches` | Public | ตารางแข่งและผลบอล (รองรับ filter) |
-| | `GET` | `/matches/:id` | Public | ข้อมูลแมตช์ตาม ID |
-| | `GET` | `/matches/:id/lineups` | Public | รายชื่อ 11 ตัวจริง แผนการเล่น ตัวสำรอง |
-| | `GET` | `/matches/:id/venue` | Public | ข้อมูลสนาม เมือง ความจุ ช่องถ่ายทอดสด |
-| **6. Standings** | `GET` | `/standings` | Public | ตารางคะแนนคำนวณจากผลแข่งจริงใน DB มีการใช้ Redis |
-| **7. Favorites** | `GET` | `/favorites` | Optional Auth | รายชื่อทีมโปรดของผู้ใช้ |
-| | `POST` | `/favorites/:team_id` | Optional Auth | เพิ่มทีมเข้าทีมโปรด |
+| **1. Auth & Profile** | `POST` | `/register` | Public | สมัครสมาชิกใหม่ (ส่งคืน Token และ User Object ทันที) |
+| | `POST` | `/login` | Public | เข้าสู่ระบบด้วย username หรือ email |
+| | `GET` | `/profile` | Bearer Token | ดูข้อมูลโปรไฟล์ของผู้ใช้ปัจจุบัน |
+| | `PUT` | `/profile` | Bearer Token | แก้ไขข้อมูลโปรไฟล์ (รองรับทั้ง JSON และอัปโหลดไฟล์รูปภาพ) |
+| | `POST` | `/profile/avatar` | Bearer Token | อัปโหลดรูปโปรไฟล์ขึ้น MinIO / S3 Storage โดยเฉพาะ |
+| **2. Seasons** | `GET` | `/seasons` | Public | รายการปี/ฤดูกาลทั้งหมด (2022-2026) พร้อมจำนวนแมตช์ |
+| **3. Leagues** | `GET` | `/leagues` | Public | รายชื่อลีกและฟุตบอลถ้วยทั้งหมด |
+| | `GET` | `/leagues/:id` | Public | ข้อมูลลีกตาม ID (UUID) |
+| **4. Teams** | `GET` | `/teams` | Public | รายชื่อสโมสรทั้งหมด (รองรับ `?league_id=`) |
+| | `GET` | `/teams/:id` | Public | ข้อมูลสโมสรตาม ID (UUID) |
+| | `GET` | `/teams/:id/form` | Public | ผลงาน 5 นัดล่าสุดของทีม (W/D/L) คำนวณจากผลแข่งจริง |
+| | `GET` | `/teams/:id/coach` | Public | ข้อมูลหัวหน้าผู้ฝึกสอน (Coach) รูปถ่าย สัญชาติ |
+| | `GET` | `/teams/:id/squad` | Public | รายชื่อผู้เล่นทุกคนในทีม ตำแหน่ง เบอร์เสื้อ รูปถ่าย |
+| **5. Matches** | `GET` | `/matches` | Public | ตารางแข่งและผลบอล (รองรับ filter: season, date, status) |
+| | `GET` | `/matches/:id` | Public | รายละเอียดแมตช์เฉพาะคู่ตาม ID |
+| | `GET` | `/matches/:id/lineups` | Public | รายชื่อ 11 ตัวจริง แผนการเล่น (Formation) และตัวสำรอง |
+| | `GET` | `/matches/:id/venue` | Public | ข้อมูลสนามแข่งขัน ความจุ เมือง ช่องถ่ายทอดสด |
+| **6. Standings** | `GET` | `/standings` | Public | ตารางคะแนนลีก คำนวณผลจริงใน DB (แข่ง ชนะ เสมอ แพ้ แต้ม) |
+| **7. Favorites** | `GET` | `/favorites` | Optional Auth | รายชื่อทีมโปรดของผู้ใช้ (ผูกกับ User ID อัตโนมัติ) |
+| | `POST` | `/favorites/:team_id` | Optional Auth | เพิ่มทีมเข้าเป็นทีมโปรด |
 | | `DELETE` | `/favorites/:team_id` | Optional Auth | ลบทีมออกจากทีมโปรด |
-| **8. News** | `GET` | `/news` | Public | ข่าวฟุตบอลสดจาก Football News API (รองรับ `/heroes` ด้วย) |
-| **9. System** | `GET` | `/health` | Public | ตรวจสอบสถานะ Server และ Database |
-| **10. Sync** | `POST` | `/sync/fixtures` | Public | ดึงแมตช์จาก API-Football บันทึกลง DB และมีใช้ Redis |
-| | `POST` | `/sync/squads` | Public | ดึงโค้ชและนักเตะ 20 ทีมลง DB อัตโนมัติ |
+| **8. News** | `GET` | `/news` | Public | ข่าวฟุตบอลไทยล่าสุดจากสำนักข่าวจริง (รองรับ `?limit=10`) |
+| | `GET` | `/heroes` | Public | ไฮไลต์ข่าวเด่น / แบนเนอร์หน้าแรก (Alias ของ `/news`) |
+| **9. System** | `GET` | `/health` | Public | ตรวจสอบสถานะ Server และการเชื่อมต่อ Database |
+| **10. Sync** | `POST` | `/sync/fixtures` | Public | ดึงตารางแข่งและผลบอลจาก API ภายนอกลง DB |
+| | `POST` | `/sync/squads` | Public | ดูดข้อมูลโค้ชและนักเตะ 20 ทีมลง DB อัตโนมัติ |
 
 ---
 
-## 1. Authentication & Profile (ระบบสมาชิกและเข้าสู่ระบบ)
+## 1. Authentication & Profile (ระบบสมาชิกและโปรไฟล์)
 
 ### กฎการตรวจสอบข้อมูล (Validation Rules)
 * **username:** ต้องยาว 3-30 ตัวอักษร อนุญาตเฉพาะตัวอักษรภาษาอังกฤษ, ตัวเลข และขีดล่าง `_` (ห้ามมีช่องว่างหรืออักขระพิเศษ)
@@ -50,10 +57,10 @@ Content-Type: `application/json`
 ---
 
 ### POST /register
-สมัครสมาชิกใหม่ ระบบจะทำการแฮชรหัสผ่านด้วย bcrypt และส่งคืน JWT Token พร้อมข้อมูลผู้ใช้ทันที
+สมัครสมาชิกใหม่ ระบบทำการแฮชรหัสผ่านด้วย bcrypt และส่งคืน JWT Token พร้อมข้อมูลผู้ใช้ทันที
 
-- **Headers:** `Content-Type: application/json`
-- **Request Body:**
+* **Headers:** `Content-Type: application/json`
+* **Request Body:**
 ```json
 {
   "username": "somchai99",
@@ -63,13 +70,13 @@ Content-Type: `application/json`
   "avatar_url": ""
 }
 ```
-- **curl:**
+* **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/register \
   -H "Content-Type: application/json" \
   -d '{"username":"somchai99","email":"somchai99@example.com","password":"Password123","confirm_password":"Password123"}'
 ```
-- **Response (201 Created):**
+* **Response (201 Created):**
 ```json
 {
   "status": "success",
@@ -84,30 +91,30 @@ curl -i -X POST http://localhost:3000/api/v1/register \
   }
 }
 ```
-- **Error Responses:**
-  - `400 Bad Request`: ข้อมูลไม่ผ่านเกณฑ์ เช่น `{"error": "password must contain at least one letter and one number"}`
-  - `409 Conflict`: ชื่อผู้ใช้หรืออีเมลซ้ำ `{"error": "username is already taken"}`
+* **Error Responses:**
+  * `400 Bad Request`: ข้อมูลไม่ผ่านเกณฑ์ เช่น `{"error": "password must contain at least one letter and one number"}`
+  * `409 Conflict`: ชื่อผู้ใช้หรืออีเมลซ้ำ `{"error": "username is already taken"}`
 
 ---
 
 ### POST /login
 เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้
 
-- **Headers:** `Content-Type: application/json`
-- **Request Body:**
+* **Headers:** `Content-Type: application/json`
+* **Request Body:**
 ```json
 {
   "email": "somchai99@example.com",
   "password": "Password123"
 }
 ```
-- **curl:**
+* **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/login \
   -H "Content-Type: application/json" \
   -d '{"email":"somchai99@example.com","password":"Password123"}'
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 {
   "status": "success",
@@ -122,7 +129,7 @@ curl -i -X POST http://localhost:3000/api/v1/login \
   }
 }
 ```
-- **Error Response (401 Unauthorized):**
+* **Error Response (401 Unauthorized):**
 ```json
 {
   "error": "invalid email/username or password"
@@ -132,15 +139,15 @@ curl -i -X POST http://localhost:3000/api/v1/login \
 ---
 
 ### GET /profile
-ดึงข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่ (ต้องส่ง Bearer Token)
+ดึงข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่
 
-- **Headers:** `Authorization: Bearer <TOKEN>`
-- **curl:**
+* **Headers:** `Authorization: Bearer <TOKEN>`
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/profile \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 {
   "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
@@ -151,7 +158,7 @@ curl -i http://localhost:3000/api/v1/profile \
   "created_at": "2026-11-26T15:36:47.484+07:00"
 }
 ```
-- **Error Response (401 Unauthorized):**
+* **Error Response (401 Unauthorized):**
 ```json
 {
   "error": "missing authorization header"
@@ -161,11 +168,11 @@ curl -i http://localhost:3000/api/v1/profile \
 ---
 
 ### PUT /profile
-แก้ไขข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่ (ต้องส่ง Bearer Token)
-*รองรับทั้งส่งแบบ JSON Body หรือส่งแบบ `multipart/form-data` เพื่อแนบไฟล์รูปภาพอัปโหลดขึ้น MinIO / S3*
+แก้ไขข้อมูลโปรไฟล์ของผู้ใช้ (รองรับทั้ง JSON Body และ Multipart Form สำหรับอัปโหลดรูปภาพ)
 
-- **Headers:** `Authorization: Bearer <TOKEN>`
-- **รูปแบบที่ 1: JSON Body**
+* **Headers:** `Authorization: Bearer <TOKEN>`
+
+**รูปแบบที่ 1: JSON Body (เปลี่ยนชื่อผู้ใช้ หรือส่ง avatar_url)**
 ```bash
 curl -i -X PUT http://localhost:3000/api/v1/profile \
   -H "Authorization: Bearer <TOKEN>" \
@@ -176,7 +183,7 @@ curl -i -X PUT http://localhost:3000/api/v1/profile \
   }'
 ```
 
-- **รูปแบบที่ 2: Multipart Form (อัปโหลดไฟล์รูปภาพ)**
+**รูปแบบที่ 2: Multipart Form (อัปโหลดไฟล์รูปภาพพร้อมเปลี่ยนชื่อ)**
 ```bash
 curl -i -X PUT http://localhost:3000/api/v1/profile \
   -H "Authorization: Bearer <TOKEN>" \
@@ -184,7 +191,7 @@ curl -i -X PUT http://localhost:3000/api/v1/profile \
   -F "avatar=@/path/to/my-photo.jpg"
 ```
 
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 {
   "status": "success",
@@ -203,17 +210,17 @@ curl -i -X PUT http://localhost:3000/api/v1/profile \
 ---
 
 ### POST /profile/avatar
-อัปโหลดไฟล์รูปภาพโปรไฟล์ขึ้น Object Storage (MinIO / AWS S3) โดยเฉพาะ
+อัปโหลดไฟล์รูปภาพโปรไฟล์ขึ้น Object Storage (MinIO / S3) โดยเฉพาะ  
 *จำกัดขนาดไฟล์ไม่เกิน 5MB, รองรับสกุลไฟล์ `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`*
 
-- **Headers:** `Authorization: Bearer <TOKEN>`
-- **curl:**
+* **Headers:** `Authorization: Bearer <TOKEN>`
+* **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/profile/avatar \
   -H "Authorization: Bearer <TOKEN>" \
   -F "avatar=@/path/to/my-photo.png"
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 {
   "status": "success",
@@ -232,37 +239,16 @@ curl -i -X POST http://localhost:3000/api/v1/profile/avatar \
 
 ---
 
-### การตรวจสอบรูปภาพบน Web GUI (MinIO Console)
-คุณสามารถเปิดดูรูปภาพที่อัปโหลด จัดการ Bucket และพรีวิวไฟล์ผ่านหน้าเว็บเบราว์เซอร์ได้ทันที:
-
-- **Web GUI URL:** [http://localhost:9001](http://localhost:9001)
-- **Username:** `minioadmin`
-- **Password:** `minioadmin`
-
-**ขั้นตอนการดูรูปบน Web GUI:**
-1. เปิดเบราว์เซอร์ไปที่ `http://localhost:9001` และล็อกอิน
-2. เลือกเมนู **"Buckets"** (หรือ **"Object Browser"**) ด้านซ้าย
-3. คลิกเข้าไปที่ Bucket **`football-avatars`** > โฟลเดอร์ **`avatars/`**
-4. คลิกที่ไฟล์รูปภาพ จะมีปุ่ม **"Preview"** ให้เปิดดูรูปบนหน้าเว็บได้ทันที หรือดาวน์โหลดไฟล์
-
-**การรัน Infrastructure ด้วย Docker Compose:**
-โปรเจกต์มีไฟล์ `docker-compose.yml` สำหรับรัน PostgreSQL, Redis และ MinIO (API + Web Console):
-```bash
-docker compose up -d
-```
-
----
-
 ## 2. Seasons (ปี / ฤดูกาล)
 
 ### GET /seasons
-ดึงรายชื่อปี/ฤดูกาลทั้งหมด (2022 ถึง 2026) พร้อมจำนวนแมตช์ในระบบ สำหรับนำไปทำ Dropdown ใน Frontend
+ดึงรายชื่อปี/ฤดูกาลทั้งหมด (2022 ถึง 2026) พร้อมจำนวนแมตช์ในระบบ สำหรับนำไปสร้าง Dropdown ให้ผู้ใช้เลือก
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/seasons
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 [
   {
@@ -298,13 +284,13 @@ curl -i http://localhost:3000/api/v1/seasons
 ## 3. Leagues (ลีกฟุตบอล)
 
 ### GET /leagues
-ดึงรายชื่อลีกและบอลถ้วยทั้งหมด
+ดึงรายชื่อลีกและฟุตบอลถ้วยทั้งหมด
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/leagues
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 [
   {
@@ -322,23 +308,23 @@ curl -i http://localhost:3000/api/v1/leagues
 ---
 
 ### GET /leagues/:id
-ดึงข้อมูลลีกตาม ID
+ดึงข้อมูลลีกตาม ID (UUID)
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/leagues/0aab480b-9e10-4fea-a6fc-884160e684d5
 ```
 
 ---
 
-## 4. Teams (สโมสร/ทีมฟุตบอล)
+## 4. Teams (สโมสรและทีมฟุตบอล)
 
 ### GET /teams
 ดึงรายชื่อทีมฟุตบอลทั้งหมด
 
-- **Query Parameters (Optional):**
-  - `league_id`: กรองเฉพาะทีมที่สังกัดลีกนี้ (UUID)
-- **curl:**
+* **Query Parameters (Optional):**
+  * `league_id`: กรองเฉพาะทีมในลีกที่ระบุ (UUID)
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/teams
 ```
@@ -346,9 +332,9 @@ curl -i http://localhost:3000/api/v1/teams
 ---
 
 ### GET /teams/:id
-ดึงข้อมูลทีมตาม ID
+ดึงข้อมูลสโมสรตาม ID
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928
 ```
@@ -358,11 +344,11 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928
 ### GET /teams/:id/form
 ดึงผลงาน 5 นัดล่าสุดของทีม (คำนวณจากผลการแข่งขันจริงในฐานข้อมูล)
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/form
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 [
   {
@@ -389,11 +375,11 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/
 ### GET /teams/:id/coach
 ดึงข้อมูลหัวหน้าผู้ฝึกสอน (Coach) ของทีม
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/coach
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 {
   "id": "c1a2b3c4-1234-5678-90ab-cdef12345678",
@@ -409,11 +395,11 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/
 ### GET /teams/:id/squad
 ดึงรายชื่อผู้เล่นทั้งหมดในทีม (Squad) พร้อมตำแหน่ง เบอร์เสื้อ อายุ และรูปถ่าย
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/squad
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 [
   {
@@ -436,16 +422,16 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/
 ### GET /matches
 ดึงรายการแข่งขันและผลบอล พร้อมข้อมูลทีมเหย้า-เยือน โลโก้ สกอร์ นาที และสถานะ
 
-- **Query Parameters (Optional):**
-  - `season`: กรองตามฤดูกาล (`2024`, `2023`, `2022`)
-  - `year`: กรองตามปีปฏิทินที่แข่ง (`2024`)
-  - `status`: กรองสถานะ (`finished`, `live`, `scheduled`)
-  - `league_id`: กรองเฉพาะลีกที่ระบุ (UUID)
-  - `date`: กรองตามวันที่แข่ง รูปแบบ `YYYY-MM-DD`
-  - `limit`: จำนวนรายการต่อหน้า (default: 50, สูงสุด: 200)
-  - `page`: หน้าที่ต้องการดึง (default: 1)
+* **Query Parameters (Optional):**
+  * `season`: กรองตามฤดูกาล (`2024`, `2023`, `2022`)
+  * `year`: กรองตามปีปฏิทินที่แข่ง (`2024`)
+  * `status`: กรองสถานะ (`finished`, `live`, `scheduled`)
+  * `league_id`: กรองเฉพาะลีกที่ระบุ (UUID)
+  * `date`: กรองตามวันที่แข่ง รูปแบบ `YYYY-MM-DD`
+  * `limit`: จำนวนรายการต่อหน้า (default: 50, สูงสุด: 200)
+  * `page`: หน้าที่ต้องการดึง (default: 1)
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i "http://localhost:3000/api/v1/matches?season=2024&limit=20"
 ```
@@ -455,7 +441,7 @@ curl -i "http://localhost:3000/api/v1/matches?season=2024&limit=20"
 ### GET /matches/:id
 ดึงข้อมูลแมตช์เฉพาะคู่ตาม ID
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/matches/f5a892b1-1234-5678-90ab-cdef12345678
 ```
@@ -463,13 +449,13 @@ curl -i http://localhost:3000/api/v1/matches/f5a892b1-1234-5678-90ab-cdef1234567
 ---
 
 ### GET /matches/:id/lineups
-ดึงรายชื่อ 11 ตัวจริง แผนการเล่น และตัวสำรองของทั้งสองฝั่ง
+ดึงรายชื่อ 11 ตัวจริง แผนการเล่น (Formation) และตัวสำรองของทั้งสองฝั่ง
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/matches/f5a892b1-1234-5678-90ab-cdef12345678/lineups
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 {
   "match_id": "f5a892b1-1234-5678-90ab-cdef12345678",
@@ -503,11 +489,11 @@ curl -i http://localhost:3000/api/v1/matches/f5a892b1-1234-5678-90ab-cdef1234567
 ### GET /matches/:id/venue
 ดึงข้อมูลสนามแข่งขัน เมือง ความจุ และช่องทางการถ่ายทอดสด
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/matches/f5a892b1-1234-5678-90ab-cdef12345678/venue
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 {
   "match_id": "f5a892b1-1234-5678-90ab-cdef12345678",
@@ -527,16 +513,16 @@ curl -i http://localhost:3000/api/v1/matches/f5a892b1-1234-5678-90ab-cdef1234567
 ## 6. Standings (ตารางคะแนนลีก)
 
 ### GET /standings
-ดึงตารางคะแนนที่คำนวณจากผลการแข่งขันจริงในฐานข้อมูล (แข่ง, ชนะ, เสมอ, แพ้, ประตูได้-เสีย, คะแนน และฟอร์ม 5 นัด)
+ดึงตารางคะแนนที่คำนวณจากผลการแข่งขันจริงในฐานข้อมูล (แข่ง ชนะ เสมอ แพ้ ประตูได้-เสีย ผลต่าง แต้ม และฟอร์ม 5 นัด) แคชผ่าน Redis
 
-- **Query Parameters (Optional):**
-  - `season`: ฤดูกาลที่ต้องการคำนวณ (default: `2024`, รองรับ `2023`, `2022`)
-  - `league_id`: กรองเฉพาะลีกที่ต้องการ (UUID)
-- **curl:**
+* **Query Parameters (Optional):**
+  * `season`: ฤดูกาลที่ต้องการคำนวณ (default: `2024`, รองรับ `2023`, `2022`)
+  * `league_id`: กรองเฉพาะลีกที่ต้องการ (UUID)
+* **curl:**
 ```bash
 curl -i "http://localhost:3000/api/v1/standings?season=2024"
 ```
-- **Response (200 OK):**
+* **Response (200 OK):**
 ```json
 [
   {
@@ -561,12 +547,12 @@ curl -i "http://localhost:3000/api/v1/standings?season=2024"
 
 ## 7. Favorites (ระบบทีมโปรด)
 
-*หากผู้ใช้ล็อกอิน ระบบจะผูกทีมโปรดกับ User ID จาก JWT Token โดยอัตโนมัติ (หรือส่ง `X-User-ID: <UUID>` เพื่อทดสอบ)*
+*หากผู้ใช้ล็อกอิน ระบบจะผูกทีมโปรดกับ User ID จาก JWT Token โดยอัตโนมัติ (หรือส่ง Header `X-User-ID: <UUID>` สำหรับการทดสอบ)*
 
 ### GET /favorites
 ดึงรายการทีมโปรดทั้งหมดของผู้ใช้
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/favorites \
   -H "Authorization: Bearer <TOKEN>"
@@ -577,7 +563,7 @@ curl -i http://localhost:3000/api/v1/favorites \
 ### POST /favorites/:team_id
 เพิ่มทีมเข้าเป็นทีมโปรด
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-57d106c81928 \
   -H "Authorization: Bearer <TOKEN>"
@@ -588,7 +574,7 @@ curl -i -X POST http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-5
 ### DELETE /favorites/:team_id
 ลบทีมออกจากทีมโปรด
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i -X DELETE http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055-57d106c81928 \
   -H "Authorization: Bearer <TOKEN>"
@@ -598,14 +584,30 @@ curl -i -X DELETE http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055
 
 ## 8. Football News (ข่าวสารฟุตบอล)
 
-### GET /news
-ดึงข่าวเด่นฟุตบอลจริงแบบเรียลไทม์จากสำนักข่าวฟุตบอลไทยชั้นนำ (Ballthai API) ส่งตรงภาษาไทยแท้ ข่าวอัปเดตตลอดเวลา พร้อมภาพข่าวความละเอียดสูงจากสนามและลิงก์บทความจริง แคชด้วย Redis 30 นาที *(สามารถเรียกผ่าน `/heroes` ได้เช่นกัน รองรับ query parameter `?limit=10`)*
+ระบบข่าวสารดึงข้อมูลจากสำนักข่าวฟุตบอลไทยชั้นนำ (Ballthai API) ส่งตรงภาษาไทยแท้ ข่าวอัปเดตตลอดเวลา พร้อมภาพข่าวความละเอียดสูงและลิงก์บทความจริง มีระบบแคชผ่าน Redis เป็นเวลา 30 นาที
 
-- **curl:**
+### GET /news
+ดึงรายการข่าวฟุตบอลล่าสุด
+
+* **Query Parameters (Optional):**
+  * `limit`: จำนวนข่าวที่ต้องการดึง (default: 10, สูงสุด: 30)
+* **curl:**
 ```bash
 curl -i "http://localhost:3000/api/v1/news?limit=10"
 ```
-- **Response (200 OK):**
+
+---
+
+### GET /heroes
+ดึงไฮไลต์ข่าวเด่นสำหรับแสดงผลในส่วน Header Carousel / Hero Banner หน้าแรก  
+*(เป็น Alias ของ `/news` รองรับ `?limit=` เช่นเดียวกัน)*
+
+* **curl:**
+```bash
+curl -i "http://localhost:3000/api/v1/heroes?limit=5"
+```
+
+* **Response (200 OK):**
 ```json
 [
   {
@@ -619,7 +621,7 @@ curl -i "http://localhost:3000/api/v1/news?limit=10"
   {
     "id": "hero-407366",
     "title": "“โค้ชเบนซ์” ผิดหวัง “บีจี ปทุม” พ่าย ไลออน ซิตี้ฯ ต้องแก้ไขก่อนเกมชี้ชะตา",
-    "subtitle": "เฮดโค้ช “เดอะ แรบบิท” ยอมรับทีมยังขาดความเฉียบคม หลังเปิดหน้าแลกก่อนจะแพ้ ไลออน ซิตี้ เซลเลอร์ส ในศึก ACL 2 “โค้ชเบนซ์” พีรพงศ์ พิชิตโชติรัตน์ หัวหน้าผู้ฝึกสอน...",
+    "subtitle": "เฮดโค้ช “เดอะ แรบบิท” ยอมรับทีมยังขาดความเฉียบคม หลังเปิดหน้าแลกก่อนจะแพ้ ไลออน ซิตี้ เซลเลอร์ส ในศึก ACL 2...",
     "image_url": "https://media.ballthai.com/2026/11/BG-Pathum-United-2.jpg",
     "tag": "เอเอฟซี แชมเปี้ยนส์ ลีก",
     "redirect_url": "https://www.ballthai.com/โค้ชเบนซ์-ผิดหวัง-บีจี-ปทุม-พ่าย-ไลออน-ซิตี้ฯ/"
@@ -627,7 +629,7 @@ curl -i "http://localhost:3000/api/v1/news?limit=10"
   {
     "id": "hero-407360",
     "title": "“บุรีรัมย์” ตั้ง “โซรัน-เอเมอร์สัน” คุมทัพชั่วคราว",
-    "subtitle": "“ปราสาทสายฟ้า” บุรีรัมย์ ยูไนเต็ด ที่เพิ่งแยกทางกับ ราอูล คาเนดา กุนซือชาวสเปน ล่าสุด “บุรีรัมย์ ยูไนเต็ด” ประกาศมอบหมายให้ โซรัน ยานโควิช และ เอเมอร์สัน เปไรร่า ทำหน้าที่คุมทัพชั่วคราว...",
+    "subtitle": "“ปราสาทสายฟ้า” บุรีรัมย์ ยูไนเต็ด ที่เพิ่งแยกทางกับ ราอูล คาเนดา กุนซือชาวสเปน ล่าสุดประกาศมอบหมายให้ โซรัน ยานโควิช และ เอเมอร์สัน เปไรร่า ทำหน้าที่คุมทัพชั่วคราว...",
     "image_url": "https://media.ballthai.com/2026/11/BURIRAM-UNITED-4.jpg",
     "tag": "ไทยลีก",
     "redirect_url": "https://www.ballthai.com/บุรีรัมย์-ตั้ง-โซรัน-เอเมอร์สัน-คุมทัพชั่วคราว/"
@@ -642,56 +644,38 @@ curl -i "http://localhost:3000/api/v1/news?limit=10"
 ### GET /health
 ตรวจสอบสถานะการทำงานของ Server และการเชื่อมต่อ Database
 
-- **curl:**
+* **curl:**
 ```bash
 curl -i http://localhost:3000/api/v1/health
+```
+* **Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "database": "connected"
+}
 ```
 
 ---
 
-## 10. Data Synchronization (ระบบดึงข้อมูลลงฐานข้อมูล)
+## 10. Data Synchronization (ระบบซิงค์ข้อมูล)
 
-### 10.1 รันผ่าน HTTP API
+### POST /sync/fixtures
+สั่งดึงข้อมูลตารางแข่งและผลบอลจาก API ภายนอก บันทึกลงฐานข้อมูล
 
-#### POST /sync/fixtures
-ดึงแมตช์การแข่งขันจาก API-Football บันทึกลงฐานข้อมูล
-
-- **curl:**
+* **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/sync/fixtures \
   -H "Content-Type: application/json" \
   -d '{"season": 2024}'
 ```
 
-#### POST /sync/squads
-ดึงข้อมูลโค้ชและนักเตะของทุกทีม (20 ทีม) ลงฐานข้อมูลอัตโนมัติ
+---
 
-- **curl:**
+### POST /sync/squads
+สั่งดึงข้อมูลโค้ชและนักเตะของทุกทีม (20 ทีม) ลงฐานข้อมูลอัตโนมัติ
+
+* **curl:**
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/sync/squads
-```
-
----
-
-### 10.2 รันผ่าน Terminal CLI
-
-```bash
-# 1. ดูดข้อมูลโค้ชและนักเตะทั้ง 20 ทีม (มีระบบเว้นจังหวะกัน rate limit และข้ามทีมที่เคยดูดแล้ว)
-go run ./cmd/sync squads
-
-# 2. ดูดโปรแกรมและผลการแข่งขันแบบระบุช่วงปี
-go run ./cmd/sync fixtures -season 2022-2024
-
-# 3. ดูรายการลีกที่ผูกไว้
-go run ./cmd/sync leagues
-```
-
----
-
-## 11. Database Migration
-
-หากต้องการสร้างตาราง `coaches` และ `players` ใน PostgreSQL:
-
-```bash
-PGPASSWORD=nuntawat838 psql -h localhost -U postgres -d football -f migrations/000003_create_coaches_and_players.up.sql
 ```
