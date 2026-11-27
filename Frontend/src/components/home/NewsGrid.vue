@@ -14,7 +14,8 @@
       <article
         v-for="news in newsList"
         :key="news.id"
-        class="card overflow-hidden group hover:border-sport-red transition-all duration-200 flex flex-col"
+        @click="openNews(news)"
+        class="card overflow-hidden group hover:border-sport-red transition-all duration-200 flex flex-col cursor-pointer"
       >
         <div class="relative h-40 overflow-hidden bg-black">
           <img
@@ -46,12 +47,25 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
-import { mockNews } from '@/mock/thaileague'
+import { mockNews, type NewsItem } from '@/mock/thaileague'
 
+const router = useRouter()
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
 const newsList = mockNews.slice(0, 3)
+
+function openNews(news: NewsItem) {
+  if (news.redirect_url) {
+    if (/^https?:\/\//i.test(news.redirect_url)) {
+      window.open(news.redirect_url, '_blank', 'noopener,noreferrer')
+    } else {
+      router.push(news.redirect_url)
+    }
+    return
+  }
+  router.push('/news')
+}
 </script>

@@ -39,7 +39,7 @@
       <template v-else-if="articles.length > 0">
         <!-- Featured Top Article -->
         <article
-          @click="activeArticle = articles[0]"
+          @click="handleArticleClick(articles[0])"
           class="card overflow-hidden grid grid-cols-1 md:grid-cols-2 cursor-pointer group hover:border-sport-red transition-all border-t-2 border-t-sport-red"
         >
           <div class="relative h-56 md:h-72 overflow-hidden bg-black">
@@ -75,7 +75,7 @@
           <article
             v-for="item in articles.slice(1)"
             :key="item.id"
-            @click="activeArticle = item"
+            @click="handleArticleClick(item)"
             class="card overflow-hidden cursor-pointer group hover:border-sport-red transition-all flex flex-col"
           >
             <div class="relative h-44 overflow-hidden bg-black">
@@ -149,6 +149,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { fetchNews } from '@/api/news'
@@ -156,8 +157,21 @@ import { mockNews } from '@/mock/thaileague'
 import type { NewsArticle } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
 
+const router = useRouter()
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
+
+function handleArticleClick(article: NewsArticle) {
+  if (article.redirect_url) {
+    if (/^https?:\/\//i.test(article.redirect_url)) {
+      window.open(article.redirect_url, '_blank', 'noopener,noreferrer')
+    } else {
+      router.push(article.redirect_url)
+    }
+    return
+  }
+  activeArticle.value = article
+}
 
 const categories = ['ทั้งหมด', 'Thai League 1', 'Thai League 2', 'FA CUP', 'พรีวิว']
 const selectedCategory = ref('ทั้งหมด')
