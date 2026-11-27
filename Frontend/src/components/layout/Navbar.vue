@@ -119,15 +119,24 @@
           </button>
         </div>
 
-        <!-- Login Button -->
-        <button
-          v-else
-          type="button"
-          @click="showAuthModal = true"
-          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sport-red hover:bg-sport-red-hover text-white transition-colors"
-        >
-          เข้าสู่ระบบ
-        </button>
+        <!-- Login / Register Links -->
+        <div v-else class="hidden sm:flex items-center gap-2">
+          <RouterLink
+            to="/login"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-sport-red hover:bg-sport-red-hover text-white transition-colors"
+          >
+            เข้าสู่ระบบ
+          </RouterLink>
+          <RouterLink
+            to="/register"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors"
+            :class="isDark
+              ? 'border-sport-border text-neutral-200 hover:border-sport-red hover:text-sport-red'
+              : 'border-gray-300 text-gray-700 hover:border-sport-red hover:text-sport-red'"
+          >
+            สมัครสมาชิก
+          </RouterLink>
+        </div>
 
         <!-- Mobile Menu Button -->
         <button
@@ -162,14 +171,22 @@
       >
         {{ item.label }}
       </RouterLink>
-      <button
-        v-if="!authStore.isAuthenticated"
-        type="button"
-        @click="mobileMenuOpen = false; showAuthModal = true"
-        class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-sport-red"
-      >
-        เข้าสู่ระบบ / สมัครสมาชิก
-      </button>
+      <div v-if="!authStore.isAuthenticated" class="pt-1 flex gap-2">
+        <RouterLink
+          to="/login"
+          @click="mobileMenuOpen = false"
+          class="flex-1 text-center px-3 py-2 rounded-lg text-sm font-bold bg-sport-red text-white"
+        >
+          เข้าสู่ระบบ
+        </RouterLink>
+        <RouterLink
+          to="/register"
+          @click="mobileMenuOpen = false"
+          class="flex-1 text-center px-3 py-2 rounded-lg text-sm font-bold border border-sport-red text-sport-red"
+        >
+          สมัครสมาชิก
+        </RouterLink>
+      </div>
       <button
         v-else
         type="button"
@@ -180,8 +197,6 @@
       </button>
     </div>
   </header>
-
-  <AuthModal :open="showAuthModal" @close="showAuthModal = false" />
 </template>
 
 <script setup lang="ts">
@@ -192,7 +207,6 @@ import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 import { fetchTeams } from '@/api/teams'
 import type { Team } from '@/types'
-import AuthModal from './AuthModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -211,7 +225,6 @@ const navItems = [
 const searchQuery = ref('')
 const showResults = ref(false)
 const mobileMenuOpen = ref(false)
-const showAuthModal = ref(false)
 const allTeams = ref<Team[]>([])
 
 onMounted(async () => {
