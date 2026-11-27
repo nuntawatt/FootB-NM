@@ -7,19 +7,13 @@ services:
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
+    env_file:
+      - .env
     environment:
       - PORT=3000
-      - DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-nuntawat838}@postgres:5432/${DB_NAME:-football}?sslmode=disable
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
       - REDIS_URL=redis:6379
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_USE_SSL=false
-      - MINIO_BUCKET=${MINIO_BUCKET:-football-avatars}
-      - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL:-http://localhost:9000/football-avatars}
-      - FOOTBALL_API_BASE_URL=${FOOTBALL_API_BASE_URL:-https://v3.football.api-sports.io}
-      - FOOTBALL_API_KEY=${FOOTBALL_API_KEY:-5076833e29ee4201fce8a24ed9ec36ea}
-      - FOOTBALL_SEASON=${FOOTBALL_SEASON:-2025}
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,15 +29,15 @@ services:
     container_name: football-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-nuntawat838}
-      POSTGRES_DB: ${DB_NAME:-football}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-football}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -72,11 +66,11 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "${MINIO_PORT:-9000}:9000"        # S3 API
-      - "${MINIO_CONSOLE_PORT:-9001}:9001" # Web GUI Console
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
