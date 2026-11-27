@@ -4,11 +4,12 @@ import (
 	"errors"
 	"log"
 
-	"football/internal/redis"
 	"football/internal/config"
 	"football/internal/database"
 	"football/internal/handlers"
 	"football/internal/middleware"
+	"football/internal/redis"
+	"football/internal/storage"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -87,14 +88,29 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, rCache *cac
 	standings := handlers.NewStandingsHandler(db, rCache)
 	api.Get("/standings", standings.Get)
 
+	// Object Storage (MinIO / AWS S3)
+	store, err := storage.New(storage.Config{
+		Endpoint:  cfg.MinioEndpoint,
+		AccessKey: cfg.MinioAccessKey,
+		SecretKey: cfg.MinioSecretKey,
+		UseSSL:    cfg.MinioUseSSL,
+		Bucket:    cfg.MinioBucket,
+		PublicURL: cfg.MinioPublicURL,
+	})
+	if err != nil {
+		log.Printf("warning: storage init: %v", err)
+	}
+
 	// User & Profile
-	users := handlers.NewUserHandler(db, cfg)
+	users := handlers.NewUserHandler(db, cfg, store)
 	protected := middleware.Protected(cfg.JWTSecret)
 	optAuth := middleware.OptionalAuth(cfg.JWTSecret)
 
 	api.Post("/register", users.Register)
 	api.Post("/login", users.Login)
 	api.Get("/profile", protected, users.Profile)
+	api.Put("/profile", protected, users.UpdateProfile)
+	api.Post("/profile/avatar", protected, users.UploadAvatar)
 
 	// Favorites
 	favorites := handlers.NewFavoriteHandler(db)

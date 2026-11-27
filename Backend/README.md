@@ -13,6 +13,8 @@ Content-Type: `application/json`
 | **1. Auth & Profile** | `POST` | `/register` | Public | สมัครสมาชิกใหม่ (ส่งคืน JWT Token) |
 | | `POST` | `/login` | Public | เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้ |
 | | `GET` | `/profile` | Bearer Token | ดูข้อมูลโปรไฟล์ส่วนตัว |
+| | `PUT` | `/profile` | Bearer Token | แก้ไขข้อมูลโปรไฟล์ (รองรับ JSON และอัปโหลดไฟล์รูปภาพ) |
+| | `POST` | `/profile/avatar` | Bearer Token | อัปโหลดรูปภาพโปรไฟล์ขึ้น MinIO / Cloud Storage |
 | **2. Seasons** | `GET` | `/seasons` | Public | รายการปี/ฤดูกาลทั้งหมด (2022-2026) |
 | **3. Leagues** | `GET` | `/leagues` | Public | รายชื่อลีกและบอลถ้วยทั้งหมด |
 | | `GET` | `/leagues/:id` | Public | ข้อมูลลีกตาม ID |
@@ -153,6 +155,78 @@ curl -i http://localhost:3000/api/v1/profile \
 ```json
 {
   "error": "missing authorization header"
+}
+```
+
+---
+
+### PUT /profile
+แก้ไขข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่ (ต้องส่ง Bearer Token)
+*รองรับทั้งส่งแบบ JSON Body หรือส่งแบบ `multipart/form-data` เพื่อแนบไฟล์รูปภาพอัปโหลดขึ้น MinIO / S3*
+
+- **Headers:** `Authorization: Bearer <TOKEN>`
+- **รูปแบบที่ 1: JSON Body**
+```bash
+curl -i -X PUT http://localhost:3000/api/v1/profile \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "somchai_pro",
+    "avatar_url": "https://example.com/avatar.jpg"
+  }'
+```
+
+- **รูปแบบที่ 2: Multipart Form (อัปโหลดไฟล์รูปภาพ)**
+```bash
+curl -i -X PUT http://localhost:3000/api/v1/profile \
+  -H "Authorization: Bearer <TOKEN>" \
+  -F "username=somchai_pro" \
+  -F "avatar=@/path/to/my-photo.jpg"
+```
+
+- **Response (200 OK):**
+```json
+{
+  "status": "success",
+  "message": "profile updated successfully",
+  "user": {
+    "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
+    "username": "somchai_pro",
+    "email": "somchai99@example.com",
+    "avatar_url": "http://localhost:9000/football-avatars/avatars/e65ba61b-1795747973.jpg",
+    "role": "user",
+    "created_at": "2026-11-26T15:36:47.484+07:00"
+  }
+}
+```
+
+---
+
+### POST /profile/avatar
+อัปโหลดไฟล์รูปภาพโปรไฟล์ขึ้น Object Storage (MinIO / AWS S3) โดยเฉพาะ
+*จำกัดขนาดไฟล์ไม่เกิน 5MB, รองรับสกุลไฟล์ `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`*
+
+- **Headers:** `Authorization: Bearer <TOKEN>`
+- **curl:**
+```bash
+curl -i -X POST http://localhost:3000/api/v1/profile/avatar \
+  -H "Authorization: Bearer <TOKEN>" \
+  -F "avatar=@/path/to/my-photo.png"
+```
+- **Response (200 OK):**
+```json
+{
+  "status": "success",
+  "message": "avatar uploaded successfully",
+  "avatar_url": "http://localhost:9000/football-avatars/avatars/e65ba61b-1795747973.png",
+  "user": {
+    "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
+    "username": "somchai_pro",
+    "email": "somchai99@example.com",
+    "avatar_url": "http://localhost:9000/football-avatars/avatars/e65ba61b-1795747973.png",
+    "role": "user",
+    "created_at": "2026-11-26T15:36:47.484+07:00"
+  }
 }
 ```
 
