@@ -15,6 +15,7 @@ export interface NewsItem {
   category: string
   date: string
   author: string
+  redirect_url?: string
 }
 
 // Mock ดาวซัลโว (⚠️ ยังไม่มี top scorers API ใน backend)

@@ -195,6 +195,7 @@ export interface NewsArticle {
   category: string
   published_at: string
   author?: string
+  redirect_url?: string
 }
 
 // === Hero Highlights (GET /heroes) ===
