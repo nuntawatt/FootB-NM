@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"time"
 
+	"football/internal/redis"
 	"football/internal/config"
 	"football/internal/ingest"
 	"football/internal/models"
@@ -16,13 +17,14 @@ import (
 type SyncHandler struct {
 	db  *gorm.DB
 	cfg *config.Config
+	cache *cache.Cache
 }
 
-func NewSyncHandler(db *gorm.DB, cfg *config.Config) *SyncHandler {
-	return &SyncHandler{db: db, cfg: cfg}
+func NewSyncHandler(db *gorm.DB, cfg *config.Config, cache *cache.Cache) *SyncHandler {
+	return &SyncHandler{db: db, cfg: cfg, cache: cache}
 }
 
-// SyncFixtures ดึงข้อมูลจาก API-Football ลงฐานข้อมูลตามฤดูกาลที่ระบุ
+// ดึงข้อมูลจาก API-Football ลงฐานข้อมูลตามฤดูกาลที่ระบุ
 func (h *SyncHandler) SyncFixtures(c fiber.Ctx) error {
 	var req models.SyncRequest
 	_ = c.Bind().Body(&req)
@@ -47,6 +49,10 @@ func (h *SyncHandler) SyncFixtures(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
+	// เมื่อ Sync สำเร็จ ให้ลบ Cache ตารางคะแนน เพื่อให้คำนวณใหม่
+	h.cache.DeletePrefix(c.Context(), "football:standings:")
+
+	// อ่าน Quota ที่เหลือของ API-Football
 	dayQuota, minQuota := client.Quota()
 
 	return c.JSON(fiber.Map{

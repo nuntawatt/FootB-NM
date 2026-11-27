@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"errors"
-
 	"football/internal/models"
 
 	"github.com/gofiber/fiber/v3"
@@ -38,12 +36,12 @@ func (h *TeamHandler) Get(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid id")
 	}
 
-	var team models.Team
-	if err := h.db.First(&team, "id = ?", id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, "team not found")
-		}
+	var teams []models.Team
+	if err := h.db.Limit(1).Find(&teams, "id = ?", id).Error; err != nil {
 		return err
 	}
-	return c.JSON(team)
+	if len(teams) == 0 {
+		return fiber.NewError(fiber.StatusNotFound, "team not found")
+	}
+	return c.JSON(teams[0])
 }

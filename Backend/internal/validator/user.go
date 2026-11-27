@@ -14,10 +14,11 @@ var (
 )
 
 type RegisterInput struct {
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	AvatarURL string `json:"avatar_url"`
+	Username        string `json:"username"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
+	AvatarURL       string `json:"avatar_url"`
 }
 
 func (r *RegisterInput) Sanitize() {
@@ -70,6 +71,13 @@ func (r *RegisterInput) Validate() error {
 	}
 	if !hasLetter || !hasNumber {
 		return errors.New("password must contain at least one letter and one number")
+	}
+
+	if r.ConfirmPassword == "" {
+		return errors.New("confirm_password is required")
+	}
+	if r.Password != r.ConfirmPassword {
+		return errors.New("passwords do not match")
 	}
 
 	if r.AvatarURL != "" {

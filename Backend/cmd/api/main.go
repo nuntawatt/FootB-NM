@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 
+	"football/internal/redis"
 	"football/internal/config"
 	"football/internal/database"
 	"football/internal/handlers"
@@ -28,6 +29,9 @@ func main() {
 	}
 	log.Println("database connected")
 
+	// start redis
+	rCache := cache.New(cfg.RedisURL)
+
 	app := fiber.New(fiber.Config{
 		ErrorHandler: jsonErrorHandler,
 	})
@@ -36,12 +40,12 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 
-	registerRoutes(app, db, cfg)
+	registerRoutes(app, db, cfg, rCache)
 
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
 
-func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
+func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, rCache *cache.Cache) {
 	api := app.Group("/api/v1")
 
 	// Health check
@@ -75,13 +79,12 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 	mg.Get("/:id", matches.Get)
 
 	// Sync
-	sync := handlers.NewSyncHandler(db, cfg)
+	sync := handlers.NewSyncHandler(db, cfg, rCache)
 	api.Post("/sync/fixtures", sync.SyncFixtures)
 	api.Post("/sync/squads", sync.SyncSquads)
 
-
 	// Standings (ตารางคะแนน)
-	standings := handlers.NewStandingsHandler(db)
+	standings := handlers.NewStandingsHandler(db, rCache)
 	api.Get("/standings", standings.Get)
 
 	// User & Profile
@@ -91,24 +94,19 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config) {
 
 	api.Post("/register", users.Register)
 	api.Post("/login", users.Login)
-	api.Post("/users/register", users.Register)
-	api.Post("/users/login", users.Login)
-
 	api.Get("/profile", protected, users.Profile)
-	api.Put("/profile", protected, users.UpdateProfile)
-	api.Get("/users/profile", protected, users.Profile)
-	api.Put("/users/profile", protected, users.UpdateProfile)
 
-	// Favorites (ทีมโปรด - ดึง user จาก JWT อัตโนมัติ หรือ fallback เป็น X-User-ID)
+	// Favorites
 	favorites := handlers.NewFavoriteHandler(db)
 	fav := api.Group("/favorites", optAuth)
 	fav.Get("/", favorites.List)
 	fav.Post("/:team_id", favorites.Add)
 	fav.Delete("/:team_id", favorites.Remove)
 
-	// Extra Features (Form, Coach, Squad, Lineups, Venue, Heroes)
-	extra := handlers.NewExtraHandler(db)
-	api.Get("/heroes", extra.Heroes)
+	// Extra Features (News, Form, Coach, Squad, Lineups, Venue)
+	extra := handlers.NewExtraHandler(db, rCache)
+	api.Get("/news", extra.News)
+	api.Get("/heroes", extra.News)
 	api.Get("/teams/:id/form", extra.TeamForm)
 	api.Get("/teams/:id/coach", extra.TeamCoach)
 	api.Get("/teams/:id/squad", extra.TeamSquad)
