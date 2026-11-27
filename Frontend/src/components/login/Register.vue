@@ -7,7 +7,7 @@
       </div>
       <h1 class="text-2xl font-black tracking-tight pt-2">สมัครสมาชิก</h1>
       <p class="text-xs" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-        สร้างบัญชี FOOTB ฟรี เพื่อบันทึกทีมโปรดและติดตามผลบอล
+        สร้างบัญชีเพื่อบันทึกทีมโปรดและติดตามผลบอล
       </p>
     </div>
 
