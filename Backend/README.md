@@ -232,6 +232,27 @@ curl -i -X POST http://localhost:3000/api/v1/profile/avatar \
 
 ---
 
+### การตรวจสอบรูปภาพบน Web GUI (MinIO Console)
+คุณสามารถเปิดดูรูปภาพที่อัปโหลด จัดการ Bucket และพรีวิวไฟล์ผ่านหน้าเว็บเบราว์เซอร์ได้ทันที:
+
+- **Web GUI URL:** [http://localhost:9001](http://localhost:9001)
+- **Username:** `minioadmin`
+- **Password:** `minioadmin`
+
+**ขั้นตอนการดูรูปบน Web GUI:**
+1. เปิดเบราว์เซอร์ไปที่ `http://localhost:9001` และล็อกอิน
+2. เลือกเมนู **"Buckets"** (หรือ **"Object Browser"**) ด้านซ้าย
+3. คลิกเข้าไปที่ Bucket **`football-avatars`** > โฟลเดอร์ **`avatars/`**
+4. คลิกที่ไฟล์รูปภาพ จะมีปุ่ม **"Preview"** ให้เปิดดูรูปบนหน้าเว็บได้ทันที หรือดาวน์โหลดไฟล์
+
+**การรัน Infrastructure ด้วย Docker Compose:**
+โปรเจกต์มีไฟล์ `docker-compose.yml` สำหรับรัน PostgreSQL, Redis และ MinIO (API + Web Console):
+```bash
+docker compose up -d
+```
+
+---
+
 ## 2. Seasons (ปี / ฤดูกาล)
 
 ### GET /seasons
