@@ -49,6 +49,8 @@
         :away-team="match.away_team"
         :home-lineup="homeStarting"
         :away-lineup="awayStarting"
+        :home-subs="lineups?.home.substitutes"
+        :away-subs="lineups?.away.substitutes"
         :home-formation="lineups?.home.formation"
         :away-formation="lineups?.away.formation"
         :home-coach="lineups?.home.coach_name"

@@ -9,6 +9,9 @@ import NewsView from '@/views/NewsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import ProfileView from '@/views/ProfileView.vue'
+import LeagueDetailView from '@/views/LeagueDetailView.vue'
+import SyncView from '@/views/SyncView.vue'
+import PredictView from '@/views/PredictView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -18,9 +21,12 @@ const router = createRouter({
     { path: '/standings', name: 'standings', component: StandingsView },
     { path: '/favorites', name: 'favorites', component: FavoritesView },
     { path: '/news', name: 'news', component: NewsView },
+    { path: '/predict', name: 'predict', component: PredictView },
+    { path: '/admin/sync', name: 'admin-sync', component: SyncView },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/register', name: 'register', component: RegisterView },
     { path: '/profile', name: 'profile', component: ProfileView },
+    { path: '/leagues/:id', name: 'league-detail', component: LeagueDetailView },
     { path: '/teams/:id', name: 'team-detail', component: TeamDetailView },
     { path: '/matches', redirect: '/fixtures' },
     { path: '/matches/:id', name: 'match-detail', component: MatchDetailView },

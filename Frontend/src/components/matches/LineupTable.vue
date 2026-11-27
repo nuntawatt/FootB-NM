@@ -1,6 +1,6 @@
 <template>
-  <div class="card p-5">
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+  <div class="card p-5 space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-base font-bold">รายชื่อผู้เล่น (Lineups)</h2>
       <div class="flex items-center gap-3 text-xs" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
         <span v-if="homeFormation">แผน {{ homeTeam?.name }}: <strong class="text-sport-red">{{ homeFormation }}</strong></span>
@@ -10,7 +10,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x" :class="isDark ? 'divide-sport-border' : 'divide-gray-200'">
       <!-- Home Lineup -->
-      <div class="space-y-3">
+      <div class="space-y-4">
         <div class="flex items-center justify-between pb-2 border-b" :class="isDark ? 'border-sport-border' : 'border-gray-200'">
           <div class="flex items-center gap-2">
             <img :src="homeTeam?.logo_url" :alt="homeTeam?.name" class="w-6 h-6 object-contain" />
@@ -20,6 +20,7 @@
             โค้ช: {{ homeCoach }}
           </span>
         </div>
+
         <div class="space-y-1.5">
           <div
             v-for="(p, idx) in homeLineup"
@@ -37,10 +38,30 @@
             </span>
           </div>
         </div>
+
+        <!-- Home Substitutes -->
+        <div v-if="homeSubs && homeSubs.length > 0" class="pt-3 border-t space-y-1.5" :class="isDark ? 'border-sport-border/60' : 'border-gray-200'">
+          <p class="text-[11px] font-bold uppercase tracking-wider" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
+            ตัวสำรอง ({{ homeSubs.length }})
+          </p>
+          <div
+            v-for="(s, idx) in homeSubs"
+            :key="`hs-${idx}`"
+            class="flex items-center justify-between text-xs py-1 px-2 rounded"
+            :class="isDark ? 'hover:bg-sport-hover/40' : 'hover:bg-gray-50'"
+          >
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 font-semibold text-neutral-400">{{ s.position }}</span>
+              <span class="w-6 tabular-nums text-neutral-400">#{{ s.number ?? '-' }}</span>
+              <span>{{ s.name }}</span>
+            </div>
+            <span v-if="s.rating" class="font-bold text-sport-red">{{ s.rating }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- Away Lineup -->
-      <div class="space-y-3 pt-4 md:pt-0 md:pl-6">
+      <div class="space-y-4 pt-4 md:pt-0 md:pl-6">
         <div class="flex items-center justify-between pb-2 border-b" :class="isDark ? 'border-sport-border' : 'border-gray-200'">
           <div class="flex items-center gap-2">
             <img :src="awayTeam?.logo_url" :alt="awayTeam?.name" class="w-6 h-6 object-contain" />
@@ -50,6 +71,7 @@
             โค้ช: {{ awayCoach }}
           </span>
         </div>
+
         <div class="space-y-1.5">
           <div
             v-for="(p, idx) in awayLineup"
@@ -67,6 +89,26 @@
             </span>
           </div>
         </div>
+
+        <!-- Away Substitutes -->
+        <div v-if="awaySubs && awaySubs.length > 0" class="pt-3 border-t space-y-1.5" :class="isDark ? 'border-sport-border/60' : 'border-gray-200'">
+          <p class="text-[11px] font-bold uppercase tracking-wider" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
+            ตัวสำรอง ({{ awaySubs.length }})
+          </p>
+          <div
+            v-for="(s, idx) in awaySubs"
+            :key="`as-${idx}`"
+            class="flex items-center justify-between text-xs py-1 px-2 rounded"
+            :class="isDark ? 'hover:bg-sport-hover/40' : 'hover:bg-gray-50'"
+          >
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 font-semibold text-neutral-400">{{ s.position }}</span>
+              <span class="w-6 tabular-nums text-neutral-400">#{{ s.number ?? '-' }}</span>
+              <span>{{ s.name }}</span>
+            </div>
+            <span v-if="s.rating" class="font-bold text-sport-red">{{ s.rating }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -82,6 +124,8 @@ defineProps<{
   awayTeam?: Team
   homeLineup: LineupPlayer[]
   awayLineup: LineupPlayer[]
+  homeSubs?: LineupPlayer[]
+  awaySubs?: LineupPlayer[]
   homeFormation?: string
   awayFormation?: string
   homeCoach?: string

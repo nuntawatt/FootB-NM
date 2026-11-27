@@ -9,7 +9,7 @@
         v-for="item in form"
         :key="item.match_id"
         :to="`/matches/${item.match_id}`"
-        class="flex flex-col items-center gap-1.5 p-2 rounded-lg transition-colors text-center"
+        class="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-center"
         :class="isDark ? 'hover:bg-sport-hover' : 'hover:bg-gray-50'"
         :title="`${item.opponent} (${item.date})`"
       >
@@ -20,6 +20,14 @@
           {{ item.result }}
         </span>
         <span class="text-xs font-bold tabular-nums">{{ item.score }}</span>
+        <span
+          class="text-[9px] font-bold px-1.5 py-0.2 rounded"
+          :class="item.is_home
+            ? 'bg-sport-red/15 text-sport-red'
+            : (isDark ? 'bg-neutral-700 text-neutral-300' : 'bg-gray-200 text-gray-600')"
+        >
+          {{ item.is_home ? 'เหย้า' : 'เยือน' }}
+        </span>
         <span class="text-[10px] truncate w-full" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
           {{ item.opponent }}
         </span>

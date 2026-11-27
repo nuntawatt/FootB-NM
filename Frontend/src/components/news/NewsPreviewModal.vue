@@ -5,11 +5,11 @@
     @click.self="$emit('close')"
   >
     <div
-      class="w-full max-w-md rounded-2xl p-4 sm:p-5 shadow-2xl border space-y-4 transition-all"
+      class="w-full max-w-4xl rounded-lg p-4 sm:p-5 shadow-2xl border space-y-4 transition-all"
       :class="isDark ? 'bg-[#1a1a1a] border-sport-border text-white' : 'bg-white border-gray-200 text-gray-900'"
     >
       <!-- Top Rounded Image -->
-      <div class="relative h-56 sm:h-64 rounded-xl overflow-hidden bg-neutral-900">
+      <div class="relative h-64 sm:h-96 rounded-lg overflow-hidden bg-neutral-900">
         <img
           :src="article.image_url"
           :alt="article.title"

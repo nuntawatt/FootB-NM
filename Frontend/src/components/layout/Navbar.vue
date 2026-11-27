@@ -243,6 +243,7 @@ const navItems = [
   { label: 'โปรแกรมแข่งขัน', to: '/fixtures' },
   { label: 'ตารางคะแนน', to: '/standings' },
   { label: 'ข่าวสาร', to: '/news' },
+  { label: 'ทายผลบอล', to: '/predict' },
   { label: 'ทีมโปรด', to: '/favorites' },
 ]
 
