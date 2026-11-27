@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"strings"
 	"time"
 
@@ -126,14 +125,15 @@ func (h *UserHandler) Login(c fiber.Ctx) error {
 	}
 
 	identifier := in.Email
-	var user models.User
-	err := h.db.Where("lower(email) = ? OR username = ?", strings.ToLower(identifier), identifier).First(&user).Error
+	var users []models.User
+	err := h.db.Where("lower(email) = ? OR username = ?", strings.ToLower(identifier), identifier).Limit(1).Find(&users).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fiber.NewError(fiber.StatusUnauthorized, "invalid email/username or password")
-		}
 		return err
 	}
+	if len(users) == 0 {
+		return fiber.NewError(fiber.StatusUnauthorized, "invalid email/username or password")
+	}
+	user := users[0]
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)); err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "invalid email/username or password")
@@ -159,12 +159,15 @@ func (h *UserHandler) Profile(c fiber.Ctx) error {
 	}
 	userID := val.(uuid.UUID)
 
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userID).Error; err != nil {
+	var users []models.User
+	if err := h.db.Limit(1).Find(&users, "id = ?", userID).Error; err != nil {
+		return err
+	}
+	if len(users) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "user not found")
 	}
 
-	return c.JSON(toUserResponse(user))
+	return c.JSON(toUserResponse(users[0]))
 }
 
 // UpdateProfile แก้ไขข้อมูลโปรไฟล์
@@ -184,10 +187,14 @@ func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	var user models.User
-	if err := h.db.First(&user, "id = ?", userID).Error; err != nil {
+	var users []models.User
+	if err := h.db.Limit(1).Find(&users, "id = ?", userID).Error; err != nil {
+		return err
+	}
+	if len(users) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "user not found")
 	}
+	user := users[0]
 
 	updates := make(map[string]any)
 	if in.Username != "" && in.Username != user.Username {
