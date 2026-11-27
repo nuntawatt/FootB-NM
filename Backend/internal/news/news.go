@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 	"time"
@@ -11,36 +12,27 @@ import (
 	"football/internal/models"
 )
 
-type espnResponse struct {
-	Header   string        `json:"header"`
-	Articles []espnArticle `json:"articles"`
-}
-
-type espnArticle struct {
-	ID          int            `json:"id"`
-	Headline    string         `json:"headline"`
-	Description string         `json:"description"`
-	Published   string         `json:"published"`
-	Images      []espnImage    `json:"images"`
-	Links       espnLinks      `json:"links"`
-	Categories  []espnCategory `json:"categories"`
-}
-
-type espnImage struct {
-	URL    string `json:"url"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-}
-
-type espnLinks struct {
-	Web struct {
-		HRef string `json:"href"`
-	} `json:"web"`
-}
-
-type espnCategory struct {
-	Description string `json:"description"`
-	Type        string `json:"type"`
+type ballthaiPost struct {
+	ID      int    `json:"id"`
+	Date    string `json:"date"`
+	Link    string `json:"link"`
+	Title   struct {
+		Rendered string `json:"rendered"`
+	} `json:"title"`
+	Excerpt struct {
+		Rendered string `json:"rendered"`
+	} `json:"excerpt"`
+	Content struct {
+		Rendered string `json:"rendered"`
+	} `json:"content"`
+	Embedded struct {
+		FeaturedMedia []struct {
+			SourceURL string `json:"source_url"`
+		} `json:"wp:featuredmedia"`
+		Terms [][]struct {
+			Name string `json:"name"`
+		} `json:"wp:term"`
+	} `json:"_embedded"`
 }
 
 var defaultBannerImages = []string{
@@ -50,79 +42,88 @@ var defaultBannerImages = []string{
 	"https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=80",
 }
 
-// FetchFootballHeroes ดึงข่าวฟุตบอลจริงสดๆ จาก Football News API (ESPN)
+// FetchFootballHeroes ดึงข่าวฟุตบอลจริงสดๆ จากสำนักข่าวฟุตบอลไทย (Ballthai API)
 func FetchFootballHeroes(ctx context.Context, limit int) []models.HeroHighlight {
-	if limit <= 0 || limit > 10 {
-		limit = 5
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 20 {
+		limit = 20
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	// 1. ดึงข่าวจากสำนักข่าวฟุตบอลไทยชั้นนำ
+	heroes, err := fetchBallthaiNews(ctx, limit)
+	if err == nil && len(heroes) > 0 {
+		return heroes
+	}
 
-	// 1. ดึงข่าวจาก ESPN Premier League News API
-	apiURL := fmt.Sprintf("https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/news?limit=%d", limit)
+	// 2. กรณีฉุกเฉินเชื่อมต่อไม่ได้ ให้คืนค่าข้อมูลสำรอง
+	return DefaultHeroes()
+}
+
+// fetchBallthaiNews ดึงข่าวสารฟุตบอลไทยสดๆ จาก Ballthai REST API
+func fetchBallthaiNews(ctx context.Context, limit int) ([]models.HeroHighlight, error) {
+	client := &http.Client{Timeout: 6 * time.Second}
+	apiURL := fmt.Sprintf("https://www.ballthai.com/wp-json/wp/v2/posts?_embed&per_page=%d", limit)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
-		return DefaultHeroes()
+		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return DefaultHeroes()
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return DefaultHeroes()
+		return nil, fmt.Errorf("ballthai api returned status: %d", resp.StatusCode)
 	}
 
-	var data espnResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || len(data.Articles) == 0 {
-		return DefaultHeroes()
+	var posts []ballthaiPost
+	if err := json.NewDecoder(resp.Body).Decode(&posts); err != nil {
+		return nil, err
+	}
+
+	if len(posts) == 0 {
+		return nil, fmt.Errorf("no posts found")
 	}
 
 	var heroes []models.HeroHighlight
-	for i, a := range data.Articles {
-		title := strings.TrimSpace(a.Headline)
+	for i, p := range posts {
+		title := cleanHTML(p.Title.Rendered)
 		if title == "" {
 			continue
 		}
 
-		desc := strings.TrimSpace(a.Description)
-		if len([]rune(desc)) > 140 {
-			desc = string([]rune(desc)[:140]) + "..."
-		}
+		subtitle := extractSubtitle(p.Content.Rendered, p.Excerpt.Rendered)
 
-		imgURL := ""
-		if len(a.Images) > 0 && a.Images[0].URL != "" {
-			imgURL = a.Images[0].URL
+		imageURL := ""
+		if len(p.Embedded.FeaturedMedia) > 0 && p.Embedded.FeaturedMedia[0].SourceURL != "" {
+			imageURL = p.Embedded.FeaturedMedia[0].SourceURL
 		} else {
-			imgURL = defaultBannerImages[i%len(defaultBannerImages)]
+			imageURL = defaultBannerImages[i%len(defaultBannerImages)]
 		}
 
-		tag := "FOOTBALL"
-		for _, cat := range a.Categories {
-			if cat.Type == "league" && cat.Description != "" {
-				tag = cat.Description
-				break
-			}
-		}
-		if tag == "FOOTBALL" && len(a.Categories) > 0 && a.Categories[0].Description != "" {
-			tag = a.Categories[0].Description
+		tag := "ข่าวฟุตบอล"
+		if len(p.Embedded.Terms) > 0 && len(p.Embedded.Terms[0]) > 0 && p.Embedded.Terms[0][0].Name != "" {
+			tag = cleanHTML(p.Embedded.Terms[0][0].Name)
 		}
 
-		link := a.Links.Web.HRef
+		link := p.Link
 		if link == "" {
 			link = "/matches"
 		}
 
 		heroes = append(heroes, models.HeroHighlight{
-			ID:          fmt.Sprintf("hero-%d", a.ID),
+			ID:          fmt.Sprintf("hero-%d", p.ID),
 			Title:       title,
-			Subtitle:    desc,
-			ImageURL:    imgURL,
-			Tag:         strings.ToUpper(tag),
+			Subtitle:    subtitle,
+			ImageURL:    imageURL,
+			Tag:         tag,
 			RedirectURL: link,
 		})
 
@@ -131,22 +132,63 @@ func FetchFootballHeroes(ctx context.Context, limit int) []models.HeroHighlight 
 		}
 	}
 
-	if len(heroes) == 0 {
-		return DefaultHeroes()
-	}
-
-	return heroes
+	return heroes, nil
 }
 
-// DefaultHeroes รายการไฮไลท์สำรองกรณีเชื่อมต่อ API ไม่สำเร็จ
+// cleanHTML ถอด HTML Tags และแปลง HTML Entities ให้เป็นข้อความภาษาไทยบริสุทธิ์
+func cleanHTML(s string) string {
+	s = html.UnescapeString(s)
+	var b strings.Builder
+	inTag := false
+	for _, r := range s {
+		if r == '<' {
+			inTag = true
+			continue
+		}
+		if r == '>' {
+			inTag = false
+			continue
+		}
+		if !inTag {
+			b.WriteRune(r)
+		}
+	}
+	fields := strings.Fields(b.String())
+	return strings.TrimSpace(strings.Join(fields, " "))
+}
+
+// extractSubtitle ดึงข้อความเกริ่นนำข่าวความยาวกำลังพอดีสำหรับแสดงผลบนการ์ดข่าว
+func extractSubtitle(contentHTML, excerptHTML string) string {
+	cleanContent := cleanHTML(contentHTML)
+	if cleanContent != "" {
+		runes := []rune(cleanContent)
+		if len(runes) > 160 {
+			return string(runes[:160]) + "..."
+		}
+		return cleanContent
+	}
+
+	cleanExcerpt := cleanHTML(excerptHTML)
+	if cleanExcerpt != "" {
+		runes := []rune(cleanExcerpt)
+		if len(runes) > 160 {
+			return string(runes[:160]) + "..."
+		}
+		return cleanExcerpt
+	}
+
+	return "ติดตามความเคลื่อนไหวและรายละเอียดการแข่งขันฟุตบอลล่าสุดได้ที่นี่"
+}
+
+// DefaultHeroes รายการไฮไลท์สำรองกรณีฉุกเฉิน
 func DefaultHeroes() []models.HeroHighlight {
 	return []models.HeroHighlight{
 		{
 			ID:          "hero-1",
-			Title:       "เกาะติดศึกการแข่งขันฟุตบอลและผลบอลสดประจำสัปดาห์",
-			Subtitle:    "ติดตามตารางคะแนน ผลบอลสด และสถิติการแข่งขันครบทุกสโมสร",
+			Title:       "เกาะติดศึกการแข่งขันฟุตบอลไทยและผลบอลสดประจำสัปดาห์",
+			Subtitle:    "ติดตามตารางคะแนน ผลบอลสด และสถิติการแข่งขันไทยลีกครบทุกสโมสร",
 			ImageURL:    defaultBannerImages[0],
-			Tag:         "FOOTBALL NEWS",
+			Tag:         "ไทยลีก",
 			RedirectURL: "/matches",
 		},
 		{
@@ -154,7 +196,7 @@ func DefaultHeroes() []models.HeroHighlight {
 			Title:       "สรุปตารางคะแนนล่าสุด เช็คอันดับจ่าฝูงและโซนตกชั้น",
 			Subtitle:    "คำนวณแต้มและผลต่างประตูได้เสียอย่างแม่นยำด้วยระบบวิเคราะห์ข้อมูล",
 			ImageURL:    defaultBannerImages[2],
-			Tag:         "STANDINGS",
+			Tag:         "ตารางคะแนน",
 			RedirectURL: "/standings",
 		},
 	}

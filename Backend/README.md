@@ -504,22 +504,38 @@ curl -i -X DELETE http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055
 ## 8. Football News (ข่าวสารฟุตบอล)
 
 ### GET /news
-ดึงข่าวเด่นฟุตบอลจริงแบบเรียลไทม์จาก Football News REST API (ESPN) พร้อมภาพข่าวความละเอียดสูงและลิงก์บทความจริง แคชด้วย Redis 30 นาที *(สามารถเรียกผ่าน `/heroes` ได้เช่นกัน)*
+ดึงข่าวเด่นฟุตบอลจริงแบบเรียลไทม์จากสำนักข่าวฟุตบอลไทยชั้นนำ (Ballthai API) ส่งตรงภาษาไทยแท้ ข่าวอัปเดตตลอดเวลา พร้อมภาพข่าวความละเอียดสูงจากสนามและลิงก์บทความจริง แคชด้วย Redis 30 นาที *(สามารถเรียกผ่าน `/heroes` ได้เช่นกัน รองรับ query parameter `?limit=10`)*
 
 - **curl:**
 ```bash
-curl -i http://localhost:3000/api/v1/news
+curl -i "http://localhost:3000/api/v1/news?limit=10"
 ```
 - **Response (200 OK):**
 ```json
 [
   {
-    "id": "hero-50605310",
-    "title": "Man United-linked Dominic Calvert-Lewin signs new Leeds contract",
-    "subtitle": "Leeds United have announced striker Dominic Calvert-Lewin has signed a new two-and-a-half-year contract with the club.",
-    "image_url": "https://a.espncdn.com/photo/2026/0914/r1716677_1296x729_16-9.jpg",
-    "tag": "ENGLISH PREMIER LEAGUE",
-    "redirect_url": "https://www.espn.com/soccer/story/_/id/50605310/dominic-calvert-lewin-leeds-united-contract"
+    "id": "hero-407370",
+    "title": "“สวายเรียง” สร้างประวัติศาสตร์เปิดบ้านอัดทีมเจลีก ญี่ปุ่น ครั้งแรก",
+    "subtitle": "“สวายเรียง เอฟซี” สโมสรตัวแทนจากประเทศกัมพูชา สร้างผลงานยอดเยี่ยมบนเวทีเอเชีย หลังเปิดบ้านเอาชนะ มาชิดะ เซลเวีย ทีมดังจากศึกเจลีก 1 ประเทศญี่ปุ่น ไปอย่างยอดเยี่ยม 2-0 ในศึกฟุตบอลเอเอฟซี แชมเปี้ยนส์ ลีก 2...",
+    "image_url": "https://media.ballthai.com/2026/11/Preah-Khan-Reach-Svay-Rieng-FC.jpg",
+    "tag": "เอเอฟซี แชมเปี้ยนส์ ลีก",
+    "redirect_url": "https://www.ballthai.com/สวายเรียง-สร้างประวัติศาสตร์เปิดบ้านอัดทีมเจลีก-ญี่ปุ่น-ครั้งแรก/"
+  },
+  {
+    "id": "hero-407366",
+    "title": "“โค้ชเบนซ์” ผิดหวัง “บีจี ปทุม” พ่าย ไลออน ซิตี้ฯ ต้องแก้ไขก่อนเกมชี้ชะตา",
+    "subtitle": "เฮดโค้ช “เดอะ แรบบิท” ยอมรับทีมยังขาดความเฉียบคม หลังเปิดหน้าแลกก่อนจะแพ้ ไลออน ซิตี้ เซลเลอร์ส ในศึก ACL 2 “โค้ชเบนซ์” พีรพงศ์ พิชิตโชติรัตน์ หัวหน้าผู้ฝึกสอน...",
+    "image_url": "https://media.ballthai.com/2026/11/BG-Pathum-United-2.jpg",
+    "tag": "เอเอฟซี แชมเปี้ยนส์ ลีก",
+    "redirect_url": "https://www.ballthai.com/โค้ชเบนซ์-ผิดหวัง-บีจี-ปทุม-พ่าย-ไลออน-ซิตี้ฯ/"
+  },
+  {
+    "id": "hero-407360",
+    "title": "“บุรีรัมย์” ตั้ง “โซรัน-เอเมอร์สัน” คุมทัพชั่วคราว",
+    "subtitle": "“ปราสาทสายฟ้า” บุรีรัมย์ ยูไนเต็ด ที่เพิ่งแยกทางกับ ราอูล คาเนดา กุนซือชาวสเปน ล่าสุด “บุรีรัมย์ ยูไนเต็ด” ประกาศมอบหมายให้ โซรัน ยานโควิช และ เอเมอร์สัน เปไรร่า ทำหน้าที่คุมทัพชั่วคราว...",
+    "image_url": "https://media.ballthai.com/2026/11/BURIRAM-UNITED-4.jpg",
+    "tag": "ไทยลีก",
+    "redirect_url": "https://www.ballthai.com/บุรีรัมย์-ตั้ง-โซรัน-เอเมอร์สัน-คุมทัพชั่วคราว/"
   }
 ]
 ```

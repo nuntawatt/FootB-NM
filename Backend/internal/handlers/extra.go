@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	cache "football/internal/redis"
@@ -223,9 +224,19 @@ func (h *ExtraHandler) MatchVenue(c fiber.Ctx) error {
 	return c.JSON(venue)
 }
 
-// News คืนข่าวสารฟุตบอลจริงสดๆ จาก Football News API
+// News คืนข่าวสารฟุตบอลจริงสดๆ จาก Football News API พร้อมแปลไทยอัตโนมัติ
 func (h *ExtraHandler) News(c fiber.Ctx) error {
-	cacheKey := "football:news"
+	limit := 10
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if limit > 20 {
+		limit = 20
+	}
+
+	cacheKey := fmt.Sprintf("football:news:%d", limit)
 	var cachedNews []models.NewsItem
 
 	// 1. อ่านจาก Redis ก่อนถ้ามี
@@ -233,8 +244,8 @@ func (h *ExtraHandler) News(c fiber.Ctx) error {
 		return c.JSON(cachedNews)
 	}
 
-	// 2. ดึงข่าวจริงจากแหล่งข่าวฟุตบอลชั้นนำ (ESPN Soccer API)
-	items := news.FetchFootballHeroes(c.Context(), 5)
+	// 2. ดึงข่าวจริงจากแหล่งข่าวฟุตบอลชั้นนำ (ESPN Soccer API) และแปลภาษาไทย
+	items := news.FetchFootballHeroes(c.Context(), limit)
 	if len(items) > 0 {
 		// เซฟลง Redis แคชไว้ 30 นาที
 		h.cache.Set(c.Context(), cacheKey, items, 30*time.Minute)
