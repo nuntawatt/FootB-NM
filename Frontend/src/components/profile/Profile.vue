@@ -188,26 +188,45 @@
           <!-- Preview -->
           <div class="flex justify-center">
             <img
-              :src="modalAvatarUrl || avatarPreview"
+              :src="modalPreviewSrc"
               alt="Avatar preview"
               class="w-24 h-24 rounded-full object-cover border-2 border-sport-red bg-neutral-800"
               @error="onAvatarError"
             />
           </div>
 
+          <!-- Upload Image File (FormData) -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold block">อัปโหลดรูปจากเครื่อง (FormData)</label>
+            <label
+              class="flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed cursor-pointer transition-colors text-xs font-semibold"
+              :class="isDark
+                ? 'border-sport-border hover:border-sport-red bg-sport-bg/50 text-neutral-200'
+                : 'border-gray-300 hover:border-sport-red bg-gray-50 text-gray-700'"
+            >
+              <span>📁 {{ selectedAvatarFile ? selectedAvatarFile.name : 'เลือกไฟล์รูปภาพ (JPG, PNG, WEBP)' }}</span>
+              <input
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="onAvatarFileChange"
+              />
+            </label>
+          </div>
+
           <!-- Preset Avatars -->
           <div class="space-y-2">
             <p class="text-xs font-semibold" :class="isDark ? 'text-neutral-300' : 'text-gray-700'">
-              เลือกรูปแนะนำ
+              หรือเลือกรูปแนะนำ
             </p>
             <div class="grid grid-cols-4 gap-3">
               <button
                 v-for="preset in presetAvatars"
                 :key="preset"
                 type="button"
-                @click="modalAvatarUrl = preset"
+                @click="selectPresetAvatar(preset)"
                 class="p-1 rounded-full border-2 transition-all flex items-center justify-center"
-                :class="modalAvatarUrl === preset ? 'border-sport-red scale-105' : 'border-transparent hover:border-neutral-500'"
+                :class="!selectedAvatarFile && modalAvatarUrl === preset ? 'border-sport-red scale-105' : 'border-transparent hover:border-neutral-500'"
               >
                 <img :src="preset" alt="Preset" class="w-12 h-12 rounded-full object-cover" />
               </button>
@@ -215,18 +234,19 @@
           </div>
 
           <!-- Custom URL -->
-          <div class="space-y-1.5">
+          <!-- <div class="space-y-1.5">
             <label class="text-xs font-semibold block">หรือวาง URL รูปภาพ (http:// หรือ https://)</label>
             <input
               v-model="modalAvatarUrl"
               type="url"
               placeholder="https://example.com/avatar.png"
+              @input="clearSelectedFile"
               class="w-full px-3.5 py-2 rounded-lg text-sm border outline-none focus:ring-2 focus:ring-sport-red"
               :class="isDark
                 ? 'bg-sport-bg border-sport-border text-white'
                 : 'bg-gray-50 border-gray-300 text-gray-900'"
             />
-          </div>
+          </div> -->
 
           <div
             v-if="avatarError"
@@ -288,7 +308,13 @@ const favorites = ref<Team[]>([])
 const showAvatarModal = ref(false)
 const showLogoutModal = ref(false)
 const modalAvatarUrl = ref('')
+const selectedAvatarFile = ref<File | null>(null)
+const selectedAvatarPreviewUrl = ref('')
 const avatarError = ref('')
+
+const modalPreviewSrc = computed(() => {
+  return selectedAvatarPreviewUrl.value || modalAvatarUrl.value || avatarPreview.value
+})
 
 const presetAvatars = computed(() => {
   const name = encodeURIComponent(authStore.user?.username || 'Footb')
@@ -332,8 +358,31 @@ onMounted(async () => {
   await loadFavorites()
 })
 
+function clearSelectedFile() {
+  if (selectedAvatarPreviewUrl.value) {
+    URL.revokeObjectURL(selectedAvatarPreviewUrl.value)
+  }
+  selectedAvatarFile.value = null
+  selectedAvatarPreviewUrl.value = ''
+}
+
+function selectPresetAvatar(url: string) {
+  clearSelectedFile()
+  modalAvatarUrl.value = url
+}
+
+function onAvatarFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  clearSelectedFile()
+  selectedAvatarFile.value = file
+  selectedAvatarPreviewUrl.value = URL.createObjectURL(file)
+}
+
 function openAvatarModal() {
   avatarError.value = ''
+  clearSelectedFile()
   modalAvatarUrl.value = authStore.user?.avatar_url || ''
   showAvatarModal.value = true
 }
@@ -341,14 +390,22 @@ function openAvatarModal() {
 async function handleSaveAvatar() {
   avatarError.value = ''
   successMsg.value = ''
-  const av = modalAvatarUrl.value.trim()
-  if (!av || !/^https?:\/\//i.test(av)) {
-    avatarError.value = 'กรุณาเลือกรูปหรือระบุ URL ที่ขึ้นต้นด้วย http:// หรือ https://'
-    return
+
+  const formData = new FormData()
+  if (selectedAvatarFile.value) {
+    formData.append('avatar', selectedAvatarFile.value)
+  } else {
+    const av = modalAvatarUrl.value.trim()
+    if (!av || !/^https?:\/\//i.test(av)) {
+      avatarError.value = 'กรุณาเลือกไฟล์รูปภาพ หรือระบุ URL ที่ขึ้นต้นด้วย http:// หรือ https://'
+      return
+    }
+    formData.append('avatar_url', av)
   }
 
   try {
-    await authStore.saveProfile({ avatar_url: av })
+    await authStore.saveProfile(formData)
+    clearSelectedFile()
     showAvatarModal.value = false
     successMsg.value = 'เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว'
   } catch (err: unknown) {

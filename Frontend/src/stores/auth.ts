@@ -53,7 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function saveProfile(payload: UpdateProfilePayload) {
+  async function saveProfile(payload: UpdateProfilePayload | FormData) {
     loading.value = true
     try {
       const res = await updateProfile(payload)

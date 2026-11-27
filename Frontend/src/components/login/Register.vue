@@ -182,6 +182,7 @@ async function handleSubmit() {
       username: username.value.trim(),
       email: email.value.trim(),
       password: password.value,
+      confirm_password: confirmPassword.value,
       avatar_url: avatarUrl.value.trim() || undefined,
     })
     router.push('/')
