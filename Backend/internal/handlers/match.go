@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"strconv"
 	"time"
 
@@ -48,20 +47,21 @@ func (h *MatchHandler) Get(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid id")
 	}
 
-	var match models.Match
+	var matches []models.Match
 	err = h.db.
 		Preload("HomeTeam").
 		Preload("AwayTeam").
 		Preload("League").
-		First(&match, "id = ?", id).Error
+		Limit(1).
+		Find(&matches, "id = ?", id).Error
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fiber.NewError(fiber.StatusNotFound, "match not found")
-		}
 		return err
 	}
-	return c.JSON(match)
+	if len(matches) == 0 {
+		return fiber.NewError(fiber.StatusNotFound, "match not found")
+	}
+	return c.JSON(matches[0])
 }
 
 // Seasons คืนรายการปีฤดูกาลและจำนวนแมตช์ในระบบ

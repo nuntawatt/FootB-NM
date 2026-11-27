@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 
-	"football/internal/cache"
+	"football/internal/redis"
 	"football/internal/config"
 	"football/internal/database"
 	"football/internal/handlers"
@@ -94,15 +94,9 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, rCache *cac
 
 	api.Post("/register", users.Register)
 	api.Post("/login", users.Login)
-	api.Post("/users/register", users.Register)
-	api.Post("/users/login", users.Login)
-
 	api.Get("/profile", protected, users.Profile)
-	api.Put("/profile", protected, users.UpdateProfile)
-	api.Get("/users/profile", protected, users.Profile)
-	api.Put("/users/profile", protected, users.UpdateProfile)
 
-	// Favorites (ทีมโปรด - ดึง user จาก JWT อัตโนมัติ หรือ fallback เป็น X-User-ID)
+	// Favorites
 	favorites := handlers.NewFavoriteHandler(db)
 	fav := api.Group("/favorites", optAuth)
 	fav.Get("/", favorites.List)

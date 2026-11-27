@@ -83,14 +83,18 @@ func (h *ExtraHandler) TeamCoach(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid team id")
 	}
 
-	var team models.Team
-	if err := h.db.First(&team, "id = ?", teamID).Error; err != nil {
+	var teams []models.Team
+	if err := h.db.Limit(1).Find(&teams, "id = ?", teamID).Error; err != nil {
+		return err
+	}
+	if len(teams) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "team not found")
 	}
+	team := teams[0]
 
-	var coach models.Coach
-	if err := h.db.Where("team_id = ?", teamID).First(&coach).Error; err == nil {
-		return c.JSON(coach)
+	var coaches []models.Coach
+	if err := h.db.Where("team_id = ?", teamID).Limit(1).Find(&coaches).Error; err == nil && len(coaches) > 0 {
+		return c.JSON(coaches[0])
 	}
 
 	// Fallback หากยังไม่ได้รัน sync
@@ -131,10 +135,14 @@ func (h *ExtraHandler) MatchLineups(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid match id")
 	}
 
-	var match models.Match
-	if err := h.db.Preload("HomeTeam").Preload("AwayTeam").First(&match, "id = ?", matchID).Error; err != nil {
+	var matches []models.Match
+	if err := h.db.Preload("HomeTeam").Preload("AwayTeam").Limit(1).Find(&matches, "id = ?", matchID).Error; err != nil {
+		return err
+	}
+	if len(matches) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "match not found")
 	}
+	match := matches[0]
 
 	num1, num2, num4, num5, num3, num6, num8, num10, num7, num9, num11 := 1, 2, 4, 5, 3, 6, 8, 10, 7, 9, 11
 	lineups := models.MatchLineup{
@@ -190,10 +198,14 @@ func (h *ExtraHandler) MatchVenue(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid match id")
 	}
 
-	var match models.Match
-	if err := h.db.Preload("HomeTeam").First(&match, "id = ?", matchID).Error; err != nil {
+	var matches []models.Match
+	if err := h.db.Preload("HomeTeam").Limit(1).Find(&matches, "id = ?", matchID).Error; err != nil {
+		return err
+	}
+	if len(matches) == 0 {
 		return fiber.NewError(fiber.StatusNotFound, "match not found")
 	}
+	match := matches[0]
 
 	venue := models.VenueInfo{
 		MatchID:   match.ID,
@@ -207,12 +219,12 @@ func (h *ExtraHandler) MatchVenue(c fiber.Ctx) error {
 
 // Heroes คืนแบนเนอร์ข่าวเด่นหน้าแรก
 func (h *ExtraHandler) Heroes(c fiber.Ctx) error {
-	var nextMatch models.Match
-	h.db.Where("status = 'scheduled'").Order("match_date asc").First(&nextMatch)
+	var nextMatches []models.Match
+	h.db.Where("status = 'scheduled'").Order("match_date asc").Limit(1).Find(&nextMatches)
 
 	var matchID *uuid.UUID
-	if nextMatch.ID != uuid.Nil {
-		matchID = &nextMatch.ID
+	if len(nextMatches) > 0 && nextMatches[0].ID != uuid.Nil {
+		matchID = &nextMatches[0].ID
 	}
 
 	heroes := []models.HeroHighlight{

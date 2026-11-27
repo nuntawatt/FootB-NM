@@ -44,7 +44,7 @@ func (c *Cache) Get(ctx context.Context, key string, target any) bool {
 	val, err := c.client.Get(ctx, key).Bytes()
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {
-			log.Printf("cache get error for key %s\n", key, err)
+			log.Printf("cache get error for key %s: %v\n", key, err)
 		}
 		return false
 	}
@@ -67,7 +67,7 @@ func (c *Cache) Set(ctx context.Context, key string, value any, ttl time.Duratio
 	}
 
 	if err := c.client.Set(ctx, key, bytes, ttl).Err(); err != nil {
-		log.Printf("cache set error for key %s\n", key, err)
+		log.Printf("cache set error for key %s: %v\n", key, err)
 	}
 }
 

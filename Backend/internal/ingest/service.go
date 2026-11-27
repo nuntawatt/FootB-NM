@@ -179,13 +179,14 @@ func isUsableFixture(f provider.Fixture) bool {
 
 // upsertTeam ค้นหาหรือสร้างทีมใหม่ (ไม่เปลี่ยน LeagueID เดิม)
 func upsertTeam(tx *gorm.DB, leagueID uuid.UUID, data provider.Team) (uuid.UUID, bool, error) {
-	var team models.Team
+	var teams []models.Team
+	if err := tx.Where("external_api_id = ?", data.ExternalID).Limit(1).Find(&teams).Error; err != nil {
+		return uuid.Nil, false, fmt.Errorf("find team: %w", err)
+	}
 
-	err := tx.Where("external_api_id = ?", data.ExternalID).First(&team).Error
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if len(teams) == 0 {
 		externalID := data.ExternalID
-		team = models.Team{
+		team := models.Team{
 			LeagueID:      leagueID,
 			Name:          data.Name,
 			LogoURL:       data.LogoURL,
@@ -197,10 +198,7 @@ func upsertTeam(tx *gorm.DB, leagueID uuid.UUID, data provider.Team) (uuid.UUID,
 		return team.ID, true, nil
 	}
 
-	if err != nil {
-		return uuid.Nil, false, fmt.Errorf("find team: %w", err)
-	}
-
+	team := teams[0]
 	updates := make(map[string]any)
 	if data.Name != "" && data.Name != team.Name {
 		updates["name"] = data.Name
@@ -219,18 +217,19 @@ func upsertTeam(tx *gorm.DB, leagueID uuid.UUID, data provider.Team) (uuid.UUID,
 
 // upsertMatch ค้นหาและบันทึกหรืออัปเดตผลการแข่งขัน
 func upsertMatch(tx *gorm.DB, leagueID, homeID, awayID uuid.UUID, f provider.Fixture) (bool, error) {
-	var match models.Match
+	var matches []models.Match
+	if err := tx.Where("external_api_id = ?", f.ExternalID).Limit(1).Find(&matches).Error; err != nil {
+		return false, fmt.Errorf("find match: %w", err)
+	}
 
-	err := tx.Where("external_api_id = ?", f.ExternalID).First(&match).Error
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if len(matches) == 0 {
 		status := f.Status
 		if status == "" {
 			status = provider.StatusScheduled
 		}
 
 		externalID := f.ExternalID
-		match = models.Match{
+		match := models.Match{
 			LeagueID:         leagueID,
 			HomeTeamID:       homeID,
 			AwayTeamID:       awayID,
@@ -250,10 +249,7 @@ func upsertMatch(tx *gorm.DB, leagueID, homeID, awayID uuid.UUID, f provider.Fix
 		return true, nil
 	}
 
-	if err != nil {
-		return false, fmt.Errorf("find match: %w", err)
-	}
-
+	match := matches[0]
 	updates := map[string]any{
 		"league_id":          leagueID,
 		"home_team_id":       homeID,
