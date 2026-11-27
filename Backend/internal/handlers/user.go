@@ -7,6 +7,7 @@ import (
 	"football/internal/config"
 	"football/internal/middleware"
 	"football/internal/models"
+	"football/internal/storage"
 	"football/internal/validator"
 
 	"github.com/gofiber/fiber/v3"
@@ -17,12 +18,13 @@ import (
 )
 
 type UserHandler struct {
-	db  *gorm.DB
-	cfg *config.Config
+	db      *gorm.DB
+	cfg     *config.Config
+	storage *storage.Storage
 }
 
-func NewUserHandler(db *gorm.DB, cfg *config.Config) *UserHandler {
-	return &UserHandler{db: db, cfg: cfg}
+func NewUserHandler(db *gorm.DB, cfg *config.Config, store *storage.Storage) *UserHandler {
+	return &UserHandler{db: db, cfg: cfg, storage: store}
 }
 
 type UserResponse struct {
@@ -170,22 +172,13 @@ func (h *UserHandler) Profile(c fiber.Ctx) error {
 	return c.JSON(toUserResponse(users[0]))
 }
 
-// UpdateProfile แก้ไขข้อมูลโปรไฟล์
+// UpdateProfile แก้ไขข้อมูลโปรไฟล์ (รองรับทั้ง JSON และ multipart/form-data สำหรับอัปโหลดรูปภาพ)
 func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 	val := c.Locals("userID")
 	if val == nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 	}
 	userID := val.(uuid.UUID)
-
-	var in validator.UpdateProfileInput
-	if err := c.Bind().Body(&in); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
-	}
-
-	if err := in.Validate(); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
 
 	var users []models.User
 	if err := h.db.Limit(1).Find(&users, "id = ?", userID).Error; err != nil {
@@ -197,15 +190,69 @@ func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 	user := users[0]
 
 	updates := make(map[string]any)
-	if in.Username != "" && in.Username != user.Username {
-		var existing []models.User
-		if err := h.db.Where("username = ? AND id != ?", in.Username, userID).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
-			return fiber.NewError(fiber.StatusConflict, "username is already taken")
+
+	contentType := c.Get("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		// 1. รับค่าจาก multipart form
+		username := strings.TrimSpace(c.FormValue("username"))
+		if username != "" {
+			in := validator.UpdateProfileInput{Username: username}
+			if err := in.Validate(); err != nil {
+				return fiber.NewError(fiber.StatusBadRequest, err.Error())
+			}
+			if username != user.Username {
+				var existing []models.User
+				if err := h.db.Where("username = ? AND id != ?", username, userID).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
+					return fiber.NewError(fiber.StatusConflict, "username is already taken")
+				}
+				updates["username"] = username
+				user.Username = username
+			}
 		}
-		updates["username"] = in.Username
-	}
-	if in.AvatarURL != "" {
-		updates["avatar_url"] = in.AvatarURL
+
+		// ตรวจสอบไฟล์รูปภาพ
+		file, err := c.FormFile("avatar")
+		if err != nil {
+			file, _ = c.FormFile("file")
+		}
+		if file != nil {
+			if h.storage == nil {
+				return fiber.NewError(fiber.StatusServiceUnavailable, "storage service is not configured")
+			}
+			avatarURL, err := h.storage.UploadAvatar(c.Context(), file, userID)
+			if err != nil {
+				return fiber.NewError(fiber.StatusBadRequest, err.Error())
+			}
+			updates["avatar_url"] = avatarURL
+			user.AvatarURL = avatarURL
+		}
+
+		if len(updates) == 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "at least one field (username or avatar file) must be provided")
+		}
+	} else {
+		// 2. รับค่าจาก JSON Body
+		var in validator.UpdateProfileInput
+		if err := c.Bind().Body(&in); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
+		}
+
+		if err := in.Validate(); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		}
+
+		if in.Username != "" && in.Username != user.Username {
+			var existing []models.User
+			if err := h.db.Where("username = ? AND id != ?", in.Username, userID).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
+				return fiber.NewError(fiber.StatusConflict, "username is already taken")
+			}
+			updates["username"] = in.Username
+			user.Username = in.Username
+		}
+		if in.AvatarURL != "" {
+			updates["avatar_url"] = in.AvatarURL
+			user.AvatarURL = in.AvatarURL
+		}
 	}
 
 	if len(updates) > 0 {
@@ -218,5 +265,50 @@ func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 		"status":  "success",
 		"message": "profile updated successfully",
 		"user":    toUserResponse(user),
+	})
+}
+
+// UploadAvatar อัปโหลดไฟล์รูปภาพโปรไฟล์ขึ้น MinIO / Cloud Storage โดยเฉพาะ
+func (h *UserHandler) UploadAvatar(c fiber.Ctx) error {
+	val := c.Locals("userID")
+	if val == nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+	}
+	userID := val.(uuid.UUID)
+
+	if h.storage == nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "storage service is not configured")
+	}
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		file, err = c.FormFile("file")
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "image file ('avatar' or 'file') is required")
+		}
+	}
+
+	avatarURL, err := h.storage.UploadAvatar(c.Context(), file, userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	// บันทึก avatar_url ลง database
+	var users []models.User
+	if err := h.db.Limit(1).Find(&users, "id = ?", userID).Error; err != nil || len(users) == 0 {
+		return fiber.NewError(fiber.StatusNotFound, "user not found")
+	}
+	user := users[0]
+	user.AvatarURL = avatarURL
+
+	if err := h.db.Model(&user).Update("avatar_url", avatarURL).Error; err != nil {
+		return err
+	}
+
+	return c.JSON(fiber.Map{
+		"status":     "success",
+		"message":    "avatar uploaded successfully",
+		"avatar_url": avatarURL,
+		"user":       toUserResponse(user),
 	})
 }
