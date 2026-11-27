@@ -14,7 +14,7 @@
       <article
         v-for="news in newsList"
         :key="news.id"
-        @click="openNews(news)"
+        @click="openPreview(news)"
         class="card overflow-hidden group hover:border-sport-red transition-all duration-200 flex flex-col cursor-pointer"
       >
         <div class="relative h-40 overflow-hidden bg-black">
@@ -43,29 +43,41 @@
         </div>
       </article>
     </div>
+
+    <!-- News Preview Card Modal -->
+    <NewsPreviewModal
+      :article="selectedArticle"
+      @close="selectedArticle = null"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import { RouterLink, useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { mockNews, type NewsItem } from '@/mock/thaileague'
+import type { NewsArticle } from '@/types'
+import NewsPreviewModal from '@/components/news/NewsPreviewModal.vue'
 
-const router = useRouter()
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
 const newsList = mockNews.slice(0, 3)
 
-function openNews(news: NewsItem) {
-  if (news.redirect_url) {
-    if (/^https?:\/\//i.test(news.redirect_url)) {
-      window.open(news.redirect_url, '_blank', 'noopener,noreferrer')
-    } else {
-      router.push(news.redirect_url)
-    }
-    return
+const selectedArticle = ref<NewsArticle | null>(null)
+
+function openPreview(news: NewsItem) {
+  selectedArticle.value = {
+    id: String(news.id),
+    title: news.title,
+    summary: news.summary,
+    content: news.content,
+    image_url: news.image,
+    category: news.category,
+    published_at: news.date,
+    author: news.author,
+    redirect_url: news.redirect_url,
   }
-  router.push('/news')
 }
 </script>

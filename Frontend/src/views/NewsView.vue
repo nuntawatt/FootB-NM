@@ -32,14 +32,14 @@
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-        กำลังโหลดข่าวสาร...
+      <div v-if="loading" class="card p-4 space-y-3">
+        <div v-for="i in 4" :key="i" class="skeleton h-16 w-full" />
       </div>
 
       <template v-else-if="articles.length > 0">
         <!-- Featured Top Article -->
         <article
-          @click="handleArticleClick(articles[0])"
+          @click="activeArticle = articles[0]"
           class="card overflow-hidden grid grid-cols-1 md:grid-cols-2 cursor-pointer group hover:border-sport-red transition-all border-t-2 border-t-sport-red"
         >
           <div class="relative h-56 md:h-72 overflow-hidden bg-black">
@@ -75,7 +75,7 @@
           <article
             v-for="item in articles.slice(1)"
             :key="item.id"
-            @click="handleArticleClick(item)"
+            @click="activeArticle = item"
             class="card overflow-hidden cursor-pointer group hover:border-sport-red transition-all flex flex-col"
           >
             <div class="relative h-44 overflow-hidden bg-black">
@@ -111,67 +111,28 @@
         ไม่พบข่าวสารในหมวดหมู่ที่เลือก
       </div>
 
-      <!-- Article Reader Modal -->
-      <div
-        v-if="activeArticle"
-        class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-        @click.self="activeArticle = null"
-      >
-        <div class="card w-full max-w-2xl max-h-[85vh] overflow-y-auto border-t-4 border-t-sport-red">
-          <div class="relative h-56 sm:h-64 bg-black">
-            <img :src="activeArticle.image_url" :alt="activeArticle.title" class="w-full h-full object-cover" />
-            <button
-              type="button"
-              @click="activeArticle = null"
-              class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/70 text-white hover:bg-sport-red flex items-center justify-center text-sm"
-            >
-              ✕
-            </button>
-            <span class="absolute bottom-3 left-4 px-2.5 py-0.5 text-xs font-bold bg-sport-red text-white rounded">
-              {{ activeArticle.category }}
-            </span>
-          </div>
-
-          <div class="p-6 space-y-4">
-            <h2 class="text-xl sm:text-2xl font-black leading-snug">{{ activeArticle.title }}</h2>
-            <p class="text-xs" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-              โดย {{ activeArticle.author || 'FOOTB' }} • {{ activeArticle.published_at }}
-            </p>
-            <p class="text-sm leading-relaxed whitespace-pre-line" :class="isDark ? 'text-neutral-200' : 'text-gray-700'">
-              {{ activeArticle.content }}
-            </p>
-          </div>
-        </div>
-      </div>
+      <!-- News Preview Card Modal -->
+      <NewsPreviewModal
+        :article="activeArticle"
+        expand-in-place
+        @close="activeArticle = null"
+      />
     </div>
   </MainLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { fetchNews } from '@/api/news'
 import { mockNews } from '@/mock/thaileague'
 import type { NewsArticle } from '@/types'
 import MainLayout from '@/components/layout/MainLayout.vue'
+import NewsPreviewModal from '@/components/news/NewsPreviewModal.vue'
 
-const router = useRouter()
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore)
-
-function handleArticleClick(article: NewsArticle) {
-  if (article.redirect_url) {
-    if (/^https?:\/\//i.test(article.redirect_url)) {
-      window.open(article.redirect_url, '_blank', 'noopener,noreferrer')
-    } else {
-      router.push(article.redirect_url)
-    }
-    return
-  }
-  activeArticle.value = article
-}
 
 const categories = ['ทั้งหมด', 'Thai League 1', 'Thai League 2', 'FA CUP', 'พรีวิว']
 const selectedCategory = ref('ทั้งหมด')
@@ -190,6 +151,7 @@ function mapMockNews(cat: string): NewsArticle[] {
     category: n.category,
     published_at: n.date,
     author: n.author,
+    redirect_url: n.redirect_url,
   }))
   if (cat === 'ทั้งหมด') return list
   return list.filter((a) => a.category === cat)
