@@ -42,6 +42,8 @@ type HeroHighlight struct {
 	RedirectURL string     `json:"redirect_url,omitempty"`
 }
 
+type NewsItem = HeroHighlight
+
 type FormMatch struct {
 	MatchID  uuid.UUID `json:"match_id"`
 	Date     string    `json:"date"`

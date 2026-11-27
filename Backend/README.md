@@ -29,7 +29,7 @@ Content-Type: `application/json`
 | **7. Favorites** | `GET` | `/favorites` | Optional Auth | รายชื่อทีมโปรดของผู้ใช้ |
 | | `POST` | `/favorites/:team_id` | Optional Auth | เพิ่มทีมเข้าทีมโปรด |
 | | `DELETE` | `/favorites/:team_id` | Optional Auth | ลบทีมออกจากทีมโปรด |
-| **8. Highlights** | `GET` | `/heroes` | Public | ข่าวเด่นและแบนเนอร์ไฮไลท์หน้าแรก |
+| **8. News** | `GET` | `/news` | Public | ข่าวฟุตบอลสดจาก Football News API (รองรับ `/heroes` ด้วย) |
 | **9. System** | `GET` | `/health` | Public | ตรวจสอบสถานะ Server และ Database |
 | **10. Sync** | `POST` | `/sync/fixtures` | Public | ดึงแมตช์จาก API-Football บันทึกลง DB และมีใช้ Redis |
 | | `POST` | `/sync/squads` | Public | ดึงโค้ชและนักเตะ 20 ทีมลง DB อัตโนมัติ |
@@ -501,25 +501,25 @@ curl -i -X DELETE http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055
 
 ---
 
-## 8. Highlights (แบนเนอร์ข่าวเด่นหน้าแรก)
+## 8. Football News (ข่าวสารฟุตบอล)
 
-### GET /heroes
-ดึงข่าวเด่นฟุตบอลจริงแบบเรียลไทม์จากสำนักข่าวกีฬาชั้นนำ พร้อมภาพข่าวความละเอียดสูงและลิงก์บทความจริง มีการแคชด้วย Redis 30 นาที
+### GET /news
+ดึงข่าวเด่นฟุตบอลจริงแบบเรียลไทม์จาก Football News REST API (ESPN) พร้อมภาพข่าวความละเอียดสูงและลิงก์บทความจริง แคชด้วย Redis 30 นาที *(สามารถเรียกผ่าน `/heroes` ได้เช่นกัน)*
 
 - **curl:**
 ```bash
-curl -i http://localhost:3000/api/v1/heroes
+curl -i http://localhost:3000/api/v1/news
 ```
 - **Response (200 OK):**
 ```json
 [
   {
-    "id": "hero-1",
-    "title": "ฟีฟ่าเผยโดนโจมตีทาง ไซเบอร์ ทำให้ข้อมูลบุคคล-ธุรกิจถูกขโมย",
-    "subtitle": "ฟีฟ่าเปิดเผยว่าองค์กรได้ตกเป็นเหยื่อการโจมตีทาง ไซเบอร์ ส่งผลให้ข้อมูลทางธุรกิจและข้อมูลส่วนบุคคลถูกขโมยไปมากกว่า 12 กิกะไบต์...",
-    "image_url": "https://www.khaosod.co.th/wpapp/uploads/2026/11/...jpg",
-    "tag": "ฟีฟ่า",
-    "redirect_url": "https://www.khaosod.co.th/sports/news_10485709"
+    "id": "hero-50605310",
+    "title": "Man United-linked Dominic Calvert-Lewin signs new Leeds contract",
+    "subtitle": "Leeds United have announced striker Dominic Calvert-Lewin has signed a new two-and-a-half-year contract with the club.",
+    "image_url": "https://a.espncdn.com/photo/2026/0914/r1716677_1296x729_16-9.jpg",
+    "tag": "ENGLISH PREMIER LEAGUE",
+    "redirect_url": "https://www.espn.com/soccer/story/_/id/50605310/dominic-calvert-lewin-leeds-united-contract"
   }
 ]
 ```

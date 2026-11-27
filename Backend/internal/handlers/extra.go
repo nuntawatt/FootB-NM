@@ -223,17 +223,17 @@ func (h *ExtraHandler) MatchVenue(c fiber.Ctx) error {
 	return c.JSON(venue)
 }
 
-// Heroes คืนแบนเนอร์ข่าวเด่นและไฮไลท์ฟุตบอลจริง
-func (h *ExtraHandler) Heroes(c fiber.Ctx) error {
-	cacheKey := "football:heroes:news"
-	var cachedHeroes []models.HeroHighlight
+// News คืนข่าวสารฟุตบอลจริงสดๆ จาก Football News API
+func (h *ExtraHandler) News(c fiber.Ctx) error {
+	cacheKey := "football:news"
+	var cachedNews []models.NewsItem
 
 	// 1. อ่านจาก Redis ก่อนถ้ามี
-	if h.cache.Get(c.Context(), cacheKey, &cachedHeroes) && len(cachedHeroes) > 0 {
-		return c.JSON(cachedHeroes)
+	if h.cache.Get(c.Context(), cacheKey, &cachedNews) && len(cachedNews) > 0 {
+		return c.JSON(cachedNews)
 	}
 
-	// 2. ดึงข่าวจริงจากแหล่งข่าวฟุตบอลชั้นนำ (Khaosod Sports / Sky Sports)
+	// 2. ดึงข่าวจริงจากแหล่งข่าวฟุตบอลชั้นนำ (ESPN Soccer API)
 	items := news.FetchFootballHeroes(c.Context(), 5)
 	if len(items) > 0 {
 		// เซฟลง Redis แคชไว้ 30 นาที
@@ -242,4 +242,9 @@ func (h *ExtraHandler) Heroes(c fiber.Ctx) error {
 	}
 
 	return c.JSON(news.DefaultHeroes())
+}
+
+// Heroes รักษา backward compatibility สำหรับชื่อเดิม
+func (h *ExtraHandler) Heroes(c fiber.Ctx) error {
+	return h.News(c)
 }
