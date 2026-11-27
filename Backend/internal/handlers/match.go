@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"football/internal/models"
@@ -17,7 +18,7 @@ type MatchHandler struct{ db *gorm.DB }
 
 func NewMatchHandler(db *gorm.DB) *MatchHandler { return &MatchHandler{db: db} }
 
-// List คืนรายการแมตช์ตาม filter (league_id, status, season, year, date, page, limit)
+// List คืนรายการแมตช์ตาม filter (league_id, status, season, year, team_id, date, page, limit, group_by)
 func (h *MatchHandler) List(c fiber.Ctx) error {
 	q := h.db.
 		Preload("HomeTeam").
@@ -26,7 +27,13 @@ func (h *MatchHandler) List(c fiber.Ctx) error {
 
 	q = applyMatchFilters(q, c)
 
-	limit := parseLimitParam(c.Query("limit"), 50, 200)
+	// หากมีการกรองเฉพาะปีหรือทีม ให้ดึงได้มากขึ้น (default 300, max 1000)
+	defaultLimit := 50
+	hasSpecificFilter := c.Query("season") != "" || c.Query("year") != "" || c.Query("group_by") != "" || c.Query("team_id") != ""
+	if hasSpecificFilter {
+		defaultLimit = 300
+	}
+	limit := parseLimitParam(c.Query("limit"), defaultLimit, 1000)
 	q = q.Limit(limit)
 
 	if page, err := strconv.Atoi(c.Query("page")); err == nil && page > 1 {
@@ -37,6 +44,25 @@ func (h *MatchHandler) List(c fiber.Ctx) error {
 	if err := q.Order("match_date desc").Find(&matches).Error; err != nil {
 		return err
 	}
+
+	// รองรับการจัดกลุ่มแมตช์ตามปี (?group_by=year) หรือตามฤดูกาล (?group_by=season)
+	groupBy := strings.ToLower(c.Query("group_by"))
+	if groupBy == "year" {
+		grouped := make(map[string][]models.Match)
+		for _, m := range matches {
+			key := strconv.Itoa(m.Year)
+			grouped[key] = append(grouped[key], m)
+		}
+		return c.JSON(grouped)
+	} else if groupBy == "season" {
+		grouped := make(map[string][]models.Match)
+		for _, m := range matches {
+			key := m.Season
+			grouped[key] = append(grouped[key], m)
+		}
+		return c.JSON(grouped)
+	}
+
 	return c.JSON(matches)
 }
 
@@ -93,25 +119,38 @@ func (h *MatchHandler) Seasons(c fiber.Ctx) error {
 }
 
 func applyMatchFilters(q *gorm.DB, c fiber.Ctx) *gorm.DB {
+	// กรองตามลีก League ID
 	if raw := c.Query("league_id"); raw != "" {
 		if lid, err := uuid.Parse(raw); err == nil {
 			q = q.Where("league_id = ?", lid)
 		}
 	}
 
+	// กรองตามสถานะการแข่งขัน status: finished, scheduled, live, postponed
 	if status := c.Query("status"); status != "" {
 		q = q.Where("status = ?", status)
 	}
 
-	// กรองตามฤดูกาล (เช่น 2024 -> 1 ก.ค. 2024 ถึง 1 ก.ค. 2025)
-	if raw := c.Query("season"); raw != "" {
-		if year, err := strconv.Atoi(raw); err == nil {
-			start, end := seasonDateRange(year)
-			q = q.Where("match_date >= ? AND match_date < ?", start, end)
+	// กรองแมตช์ของทีมใดทีมหนึ่ง ไม่ว่าจะเป็นทีมเหย้าหรือเยือน
+	if raw := c.Query("team_id"); raw != "" {
+		if tid, err := uuid.Parse(raw); err == nil {
+			q = q.Where("home_team_id = ? OR away_team_id = ?", tid, tid)
 		}
 	}
 
-	// กรองตามปีปฏิทิน (1 ม.ค. ถึง 31 ธ.ค.)
+	// กรองคู่แข่งขันเฉพาะเจาะจง home_team_id / away_team_id
+	if raw := c.Query("home_team_id"); raw != "" {
+		if hid, err := uuid.Parse(raw); err == nil {
+			q = q.Where("home_team_id = ?", hid)
+		}
+	}
+	if raw := c.Query("away_team_id"); raw != "" {
+		if aid, err := uuid.Parse(raw); err == nil {
+			q = q.Where("away_team_id = ?", aid)
+		}
+	}
+
+	// กรองตามปีปฏิทิน เช่น ?year=2022, 2023, 2024, 2025, 2026 -> 1 ม.ค. ถึง 31 ธ.ค.
 	if raw := c.Query("year"); raw != "" {
 		if year, err := strconv.Atoi(raw); err == nil {
 			start := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -120,7 +159,16 @@ func applyMatchFilters(q *gorm.DB, c fiber.Ctx) *gorm.DB {
 		}
 	}
 
-	// กรองตามวันที่ระบุ (YYYY-MM-DD)
+	// กรองตามฤดูกาลฟุตบอล เช่น ?season=2024 หรือ ?season=2024/2025 -> 1 ก.ค. 2024 ถึง 1 ก.ค. 2025
+	if raw := c.Query("season"); raw != "" {
+		seasonYearStr := strings.Split(raw, "/")[0]
+		if year, err := strconv.Atoi(seasonYearStr); err == nil {
+			start, end := seasonDateRange(year)
+			q = q.Where("match_date >= ? AND match_date < ?", start, end)
+		}
+	}
+
+	// กรองตามวันที่ระบุ YYYY-MM-DD
 	if raw := c.Query("date"); raw != "" {
 		if t, err := time.Parse("2006-01-02", raw); err == nil {
 			start := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)

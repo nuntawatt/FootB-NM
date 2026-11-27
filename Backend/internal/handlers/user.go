@@ -172,7 +172,7 @@ func (h *UserHandler) Profile(c fiber.Ctx) error {
 	return c.JSON(toUserResponse(users[0]))
 }
 
-// UpdateProfile แก้ไขข้อมูลโปรไฟล์ (รองรับทั้ง JSON และ multipart/form-data สำหรับอัปโหลดรูปภาพ)
+// แก้ไขข้อมูลโปรไฟล์ รองรับทั้ง JSON และ multipart/form-data สำหรับอัปโหลดรูปภาพ
 func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 	val := c.Locals("userID")
 	if val == nil {
@@ -268,7 +268,7 @@ func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 	})
 }
 
-// UploadAvatar อัปโหลดไฟล์รูปภาพโปรไฟล์ขึ้น MinIO / Cloud Storage โดยเฉพาะ
+// อัปโหลดไฟล์รูปภาพโปรไฟล์ขึ้น MinIO / Cloud Storage โดยเฉพาะ
 func (h *UserHandler) UploadAvatar(c fiber.Ctx) error {
 	val := c.Locals("userID")
 	if val == nil {
