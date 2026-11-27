@@ -103,9 +103,10 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, rCache *cac
 	fav.Post("/:team_id", favorites.Add)
 	fav.Delete("/:team_id", favorites.Remove)
 
-	// Extra Features (Form, Coach, Squad, Lineups, Venue, Heroes)
-	extra := handlers.NewExtraHandler(db)
-	api.Get("/heroes", extra.Heroes)
+	// Extra Features (News, Form, Coach, Squad, Lineups, Venue)
+	extra := handlers.NewExtraHandler(db, rCache)
+	api.Get("/news", extra.News)
+	api.Get("/heroes", extra.News)
 	api.Get("/teams/:id/form", extra.TeamForm)
 	api.Get("/teams/:id/coach", extra.TeamCoach)
 	api.Get("/teams/:id/squad", extra.TeamSquad)

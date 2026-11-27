@@ -29,7 +29,7 @@ Content-Type: `application/json`
 | **7. Favorites** | `GET` | `/favorites` | Optional Auth | รายชื่อทีมโปรดของผู้ใช้ |
 | | `POST` | `/favorites/:team_id` | Optional Auth | เพิ่มทีมเข้าทีมโปรด |
 | | `DELETE` | `/favorites/:team_id` | Optional Auth | ลบทีมออกจากทีมโปรด |
-| **8. Highlights** | `GET` | `/heroes` | Public | ข่าวเด่นและแบนเนอร์ไฮไลท์หน้าแรก |
+| **8. News** | `GET` | `/news` | Public | ข่าวฟุตบอลสดจาก Football News API (รองรับ `/heroes` ด้วย) |
 | **9. System** | `GET` | `/health` | Public | ตรวจสอบสถานะ Server และ Database |
 | **10. Sync** | `POST` | `/sync/fixtures` | Public | ดึงแมตช์จาก API-Football บันทึกลง DB และมีใช้ Redis |
 | | `POST` | `/sync/squads` | Public | ดึงโค้ชและนักเตะ 20 ทีมลง DB อัตโนมัติ |
@@ -501,26 +501,41 @@ curl -i -X DELETE http://localhost:3000/api/v1/favorites/e1c4d9dc-03a5-427c-b055
 
 ---
 
-## 8. Highlights (แบนเนอร์ข่าวเด่นหน้าแรก)
+## 8. Football News (ข่าวสารฟุตบอล)
 
-### GET /heroes
-ดึงข่าวเด่น บิ๊กแมตช์ประจำสัปดาห์ และแบนเนอร์ภาพความละเอียดสูงสำหรับหน้าแรก
+### GET /news
+ดึงข่าวเด่นฟุตบอลจริงแบบเรียลไทม์จากสำนักข่าวฟุตบอลไทยชั้นนำ (Ballthai API) ส่งตรงภาษาไทยแท้ ข่าวอัปเดตตลอดเวลา พร้อมภาพข่าวความละเอียดสูงจากสนามและลิงก์บทความจริง แคชด้วย Redis 30 นาที *(สามารถเรียกผ่าน `/heroes` ได้เช่นกัน รองรับ query parameter `?limit=10`)*
 
 - **curl:**
 ```bash
-curl -i http://localhost:3000/api/v1/heroes
+curl -i "http://localhost:3000/api/v1/news?limit=10"
 ```
 - **Response (200 OK):**
 ```json
 [
   {
-    "id": "hero-1",
-    "title": "ศึกบิ๊กแมตช์ไทยลีก นัดหยุดโลกสุดสัปดาห์นี้!",
-    "subtitle": "ติดตามการถ่ายทอดสดแบบ Real-time พร้อมผลการวิเคราะห์เจาะลึก",
-    "image_url": "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80",
-    "tag": "BIG MATCH",
-    "match_id": "f5a892b1-1234-5678-90ab-cdef12345678",
-    "redirect_url": "/matches"
+    "id": "hero-407370",
+    "title": "“สวายเรียง” สร้างประวัติศาสตร์เปิดบ้านอัดทีมเจลีก ญี่ปุ่น ครั้งแรก",
+    "subtitle": "“สวายเรียง เอฟซี” สโมสรตัวแทนจากประเทศกัมพูชา สร้างผลงานยอดเยี่ยมบนเวทีเอเชีย หลังเปิดบ้านเอาชนะ มาชิดะ เซลเวีย ทีมดังจากศึกเจลีก 1 ประเทศญี่ปุ่น ไปอย่างยอดเยี่ยม 2-0 ในศึกฟุตบอลเอเอฟซี แชมเปี้ยนส์ ลีก 2...",
+    "image_url": "https://media.ballthai.com/2026/11/Preah-Khan-Reach-Svay-Rieng-FC.jpg",
+    "tag": "เอเอฟซี แชมเปี้ยนส์ ลีก",
+    "redirect_url": "https://www.ballthai.com/สวายเรียง-สร้างประวัติศาสตร์เปิดบ้านอัดทีมเจลีก-ญี่ปุ่น-ครั้งแรก/"
+  },
+  {
+    "id": "hero-407366",
+    "title": "“โค้ชเบนซ์” ผิดหวัง “บีจี ปทุม” พ่าย ไลออน ซิตี้ฯ ต้องแก้ไขก่อนเกมชี้ชะตา",
+    "subtitle": "เฮดโค้ช “เดอะ แรบบิท” ยอมรับทีมยังขาดความเฉียบคม หลังเปิดหน้าแลกก่อนจะแพ้ ไลออน ซิตี้ เซลเลอร์ส ในศึก ACL 2 “โค้ชเบนซ์” พีรพงศ์ พิชิตโชติรัตน์ หัวหน้าผู้ฝึกสอน...",
+    "image_url": "https://media.ballthai.com/2026/11/BG-Pathum-United-2.jpg",
+    "tag": "เอเอฟซี แชมเปี้ยนส์ ลีก",
+    "redirect_url": "https://www.ballthai.com/โค้ชเบนซ์-ผิดหวัง-บีจี-ปทุม-พ่าย-ไลออน-ซิตี้ฯ/"
+  },
+  {
+    "id": "hero-407360",
+    "title": "“บุรีรัมย์” ตั้ง “โซรัน-เอเมอร์สัน” คุมทัพชั่วคราว",
+    "subtitle": "“ปราสาทสายฟ้า” บุรีรัมย์ ยูไนเต็ด ที่เพิ่งแยกทางกับ ราอูล คาเนดา กุนซือชาวสเปน ล่าสุด “บุรีรัมย์ ยูไนเต็ด” ประกาศมอบหมายให้ โซรัน ยานโควิช และ เอเมอร์สัน เปไรร่า ทำหน้าที่คุมทัพชั่วคราว...",
+    "image_url": "https://media.ballthai.com/2026/11/BURIRAM-UNITED-4.jpg",
+    "tag": "ไทยลีก",
+    "redirect_url": "https://www.ballthai.com/บุรีรัมย์-ตั้ง-โซรัน-เอเมอร์สัน-คุมทัพชั่วคราว/"
   }
 ]
 ```
