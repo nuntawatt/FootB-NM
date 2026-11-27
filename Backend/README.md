@@ -13,7 +13,6 @@ Content-Type: `application/json`
 | **1. Auth & Profile** | `POST` | `/register` | Public | สมัครสมาชิกใหม่ (ส่งคืน JWT Token) |
 | | `POST` | `/login` | Public | เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้ |
 | | `GET` | `/profile` | Bearer Token | ดูข้อมูลโปรไฟล์ส่วนตัว |
-| | `PUT` | `/profile` | Bearer Token | แก้ไขข้อมูลโปรไฟล์ (ชื่อ, รูป Avatar) |
 | **2. Seasons** | `GET` | `/seasons` | Public | รายการปี/ฤดูกาลทั้งหมด (2022-2026) |
 | **3. Leagues** | `GET` | `/leagues` | Public | รายชื่อลีกและบอลถ้วยทั้งหมด |
 | | `GET` | `/leagues/:id` | Public | ข้อมูลลีกตาม ID |
@@ -152,44 +151,6 @@ curl -i http://localhost:3000/api/v1/profile \
 ```json
 {
   "error": "missing authorization header"
-}
-```
-
----
-
-### PUT /profile
-แก้ไขข้อมูลโปรไฟล์ส่วนตัว (ชื่อผู้ใช้, URL รูปโปรไฟล์)
-
-- **Headers:**
-  - `Authorization: Bearer <TOKEN>`
-  - `Content-Type: application/json`
-- **Request Body:**
-```json
-{
-  "username": "somchai_pro",
-  "avatar_url": "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=400&q=80"
-}
-```
-- **curl:**
-```bash
-curl -i -X PUT http://localhost:3000/api/v1/profile \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  -H "Content-Type: application/json" \
-  -d '{"username":"somchai_pro"}'
-```
-- **Response (200 OK):**
-```json
-{
-  "status": "success",
-  "message": "profile updated successfully",
-  "user": {
-    "id": "e65ba61b-858a-49fe-b9db-e311945ca184",
-    "username": "somchai_pro",
-    "email": "somchai99@example.com",
-    "avatar_url": "https://ui-avatars.com/api/?name=somchai99&background=0F172A&color=38BDF8&size=256",
-    "role": "user",
-    "created_at": "2026-11-26T15:36:47.484+07:00"
-  }
 }
 ```
 

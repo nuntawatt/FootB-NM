@@ -51,7 +51,7 @@ func (h *UserHandler) generateToken(user models.User) (string, error) {
 		Username: user.Username,
 		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)), // อายุ 7 วัน
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)), 
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

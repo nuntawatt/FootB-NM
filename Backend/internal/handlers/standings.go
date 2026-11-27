@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"football/internal/cache"
+	"football/internal/redis"
 	"football/internal/models"
 
 	"github.com/gofiber/fiber/v3"

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"time"
 
-	"football/internal/cache"
+	"football/internal/redis"
 	"football/internal/config"
 	"football/internal/ingest"
 	"football/internal/models"
