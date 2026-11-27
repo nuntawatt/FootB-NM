@@ -1,21 +1,24 @@
 <template>
   <RouterLink
     :to="`/matches/${match.id}`"
-    class="flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-5 py-3.5 transition-colors border-b last:border-b-0"
-    :class="isDark
-      ? 'border-sport-border/70 hover:bg-sport-hover/70'
-      : 'border-gray-100 hover:bg-gray-50'"
+    class="group flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-5 py-3.5 transition-all border-b last:border-b-0 border-l-2"
+    :class="[
+      match.status === 'live' ? 'border-l-sport-red bg-sport-red/5' : 'border-l-transparent',
+      isDark
+        ? 'border-b-sport-border/70 hover:bg-sport-hover/70'
+        : 'border-b-gray-100 hover:bg-gray-50'
+    ]"
   >
     <!-- Home Team -->
     <div class="flex items-center justify-end gap-2 sm:gap-3 flex-1 min-w-0 text-right">
-      <span class="text-xs sm:text-sm font-semibold truncate" :class="isDark ? 'text-white' : 'text-gray-900'">
+      <span class="text-xs sm:text-sm font-semibold truncate group-hover:text-sport-red transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
         {{ match.home_team?.name || 'Home Team' }}
       </span>
       <img
         v-if="match.home_team?.logo_url"
         :src="match.home_team.logo_url"
         :alt="match.home_team.name"
-        class="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+        class="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0 group-hover:scale-110 transition-transform"
       />
     </div>
 
@@ -65,9 +68,9 @@
         v-if="match.away_team?.logo_url"
         :src="match.away_team.logo_url"
         :alt="match.away_team.name"
-        class="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+        class="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0 group-hover:scale-110 transition-transform"
       />
-      <span class="text-xs sm:text-sm font-semibold truncate" :class="isDark ? 'text-white' : 'text-gray-900'">
+      <span class="text-xs sm:text-sm font-semibold truncate group-hover:text-sport-red transition-colors" :class="isDark ? 'text-white' : 'text-gray-900'">
         {{ match.away_team?.name || 'Away Team' }}
       </span>
     </div>

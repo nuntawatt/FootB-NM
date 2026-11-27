@@ -15,6 +15,7 @@
             <th class="py-3 px-2 text-center">แพ้</th>
             <th class="py-3 px-2 text-center hidden sm:table-cell">+/-</th>
             <th class="py-3 px-2 text-center">ผลต่าง</th>
+            <th class="py-3 px-2 text-center hidden md:table-cell">ฟอร์ม 5 นัด</th>
             <th class="py-3 px-4 text-center font-bold">คะแนน</th>
           </tr>
         </thead>
@@ -34,10 +35,10 @@
               {{ row.position }}
             </td>
             <td class="py-2.5 px-2">
-              <div class="flex items-center gap-2.5">
+              <RouterLink :to="`/teams/${row.team.id}`" class="flex items-center gap-2.5 hover:text-sport-red transition-colors">
                 <img :src="row.team.logo_url" :alt="row.team.name" class="w-6 h-6 object-contain shrink-0" />
                 <span class="font-semibold truncate">{{ row.team.name }}</span>
-              </div>
+              </RouterLink>
             </td>
             <td class="py-2.5 px-2 text-center tabular-nums">{{ row.played }}</td>
             <td class="py-2.5 px-2 text-center tabular-nums">{{ row.won }}</td>
@@ -48,6 +49,19 @@
             </td>
             <td class="py-2.5 px-2 text-center tabular-nums">
               {{ row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference }}
+            </td>
+            <td class="py-2.5 px-2 hidden md:table-cell">
+              <div v-if="row.form?.length" class="flex items-center justify-center gap-1">
+                <span
+                  v-for="(f, i) in row.form"
+                  :key="i"
+                  class="w-5 h-5 rounded text-[10px] font-extrabold text-white flex items-center justify-center"
+                  :class="f === 'W' ? 'bg-emerald-600' : f === 'L' ? 'bg-sport-red' : 'bg-neutral-500'"
+                >
+                  {{ f }}
+                </span>
+              </div>
+              <span v-else class="text-xs text-neutral-500 block text-center">-</span>
             </td>
             <td class="py-2.5 px-4 text-center font-extrabold text-sport-red tabular-nums">
               {{ row.points }}
@@ -79,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import type { StandingRow } from '@/types'

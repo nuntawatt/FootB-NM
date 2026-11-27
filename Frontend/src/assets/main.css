@@ -9,13 +9,11 @@
     @apply font-sans antialiased;
   }
 
-  /* Dark mode (default) */
   .dark body,
   .dark {
     @apply bg-sport-bg text-white;
   }
 
-  /* Light mode */
   body {
     @apply bg-gray-100 text-gray-900;
   }
@@ -24,11 +22,11 @@
 @layer components {
   .btn-primary {
     @apply bg-sport-red hover:bg-sport-red-hover text-white font-semibold
-           px-4 py-2 rounded-lg transition-colors duration-200;
+           px-4 py-2 rounded-lg transition-all duration-200 active:scale-[0.98];
   }
 
   .card {
-    @apply bg-sport-card border border-sport-border rounded-xl;
+    @apply bg-sport-card border border-sport-border rounded-xl transition-colors duration-200;
   }
 
   .dark .card {
@@ -38,11 +36,38 @@
   .light .card {
     @apply bg-white border-gray-200;
   }
+
+  .skeleton {
+    @apply animate-pulse rounded-lg;
+  }
+
+  .dark .skeleton {
+    @apply bg-neutral-800;
+  }
+
+  .light .skeleton {
+    @apply bg-gray-200;
+  }
+}
+
+/* Page transition */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 /* Custom scrollbar for dark theme */
 .dark ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 .dark ::-webkit-scrollbar-track {
   background: #1a1a1a;
@@ -52,5 +77,5 @@
   border-radius: 4px;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #dc2626;
 }

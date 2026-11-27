@@ -22,6 +22,7 @@ const router = createRouter({
     { path: '/register', name: 'register', component: RegisterView },
     { path: '/profile', name: 'profile', component: ProfileView },
     { path: '/teams/:id', name: 'team-detail', component: TeamDetailView },
+    { path: '/matches', redirect: '/fixtures' },
     { path: '/matches/:id', name: 'match-detail', component: MatchDetailView },
   ],
   scrollBehavior() {
