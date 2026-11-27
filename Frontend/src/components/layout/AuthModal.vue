@@ -131,6 +131,7 @@ async function handleSubmit() {
         username: username.value,
         email: email.value,
         password: password.value,
+        confirm_password: password.value,
       })
     }
     emit('close')

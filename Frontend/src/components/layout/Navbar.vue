@@ -114,6 +114,7 @@
               :src="authStore.user.avatar_url"
               :alt="authStore.user.username"
               class="w-8 h-8 rounded-full object-cover border border-sport-red"
+              @error="onAvatarError"
             />
             <span class="text-xs font-semibold max-w-[100px] truncate">{{ authStore.user.username }}</span>
           </RouterLink>
@@ -289,5 +290,9 @@ function handleBlur() {
   setTimeout(() => {
     showResults.value = false
   }, 150)
+}
+
+function onAvatarError(e: Event) {
+  (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=User&background=dc2626&color=fff'
 }
 </script>

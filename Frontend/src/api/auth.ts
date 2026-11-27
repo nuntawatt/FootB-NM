@@ -5,6 +5,7 @@ export interface RegisterPayload {
   username: string
   email: string
   password: string
+  confirm_password: string
   avatar_url?: string
 }
 
@@ -33,7 +34,14 @@ export async function fetchProfile(): Promise<User> {
   return data
 }
 
-export async function updateProfile(payload: UpdateProfilePayload): Promise<{ status: string; message: string; user: User }> {
-  const { data } = await apiClient.put<{ status: string; message: string; user: User }>('/profile', payload)
+export async function updateProfile(
+  payload: UpdateProfilePayload | FormData
+): Promise<{ status: string; message: string; user: User }> {
+  const isFormData = payload instanceof FormData
+  const { data } = await apiClient.put<{ status: string; message: string; user: User }>(
+    '/profile',
+    payload,
+    isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined
+  )
   return data
 }
