@@ -6,46 +6,65 @@ services:
     container_name: football-backend-api
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     environment:
       - PORT=3000
-      - DATABASE_URL=postgres://postgres:nuntawat838@postgres:5432/football?sslmode=disable
+      - DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-nuntawat838}@postgres:5432/${DB_NAME:-football}?sslmode=disable
       - REDIS_URL=redis:6379
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
       - MINIO_USE_SSL=false
-      - MINIO_BUCKET=football-avatars
-      - MINIO_PUBLIC_URL=http://localhost:9000/football-avatars
-      - FOOTBALL_API_BASE_URL=https://v3.football.api-sports.io
-      - FOOTBALL_API_KEY=5076833e29ee4201fce8a24ed9ec36ea
-      - FOOTBALL_SEASON=2025
+      - MINIO_BUCKET=${MINIO_BUCKET:-football-avatars}
+      - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL:-http://localhost:9000/football-avatars}
+      - FOOTBALL_API_BASE_URL=${FOOTBALL_API_BASE_URL:-https://v3.football.api-sports.io}
+      - FOOTBALL_API_KEY=${FOOTBALL_API_KEY:-5076833e29ee4201fce8a24ed9ec36ea}
+      - FOOTBALL_SEASON=${FOOTBALL_SEASON:-2025}
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - football-network
 
   postgres:
     image: postgres:15-alpine
     container_name: football-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: nuntawat838
-      POSTGRES_DB: football
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-nuntawat838}
+      POSTGRES_DB: ${DB_NAME:-football}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-football}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - football-network
 
   redis:
     image: redis:7-alpine
     container_name: football-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - football-network
 
   minio:
     image: minio/minio:latest
@@ -53,15 +72,26 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
     ports:
-      - "9000:9000"   # MinIO S3 API Endpoint
-      - "9001:9001"   # MinIO Web GUI Console (สำหรับดูรูปภาพบนเว็บ)
+      - "${MINIO_PORT:-9000}:9000"        # S3 API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001" # Web GUI Console
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - football-network
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+
+networks:
+  football-network:
+    driver: bridge
