@@ -204,6 +204,7 @@ const navItems = [
   { label: 'หน้าแรก', to: '/' },
   { label: 'โปรแกรมแข่งขัน', to: '/fixtures' },
   { label: 'ตารางคะแนน', to: '/standings' },
+  { label: 'ข่าวสาร', to: '/news' },
   { label: 'ทีมโปรด', to: '/favorites' },
 ]
 

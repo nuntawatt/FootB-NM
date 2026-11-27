@@ -184,6 +184,19 @@ export interface MatchExtraMock {
   stats: MatchStatItem[]
 }
 
+// === News (GET /news) ===
+
+export interface NewsArticle {
+  id: string
+  title: string
+  summary: string
+  content: string
+  image_url: string
+  category: string
+  published_at: string
+  author?: string
+}
+
 // === Hero Highlights (GET /heroes) ===
 
 export interface HeroHighlight {
