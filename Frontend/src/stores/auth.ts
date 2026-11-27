@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types'
-import { loginUser, registerUser, fetchProfile, type LoginPayload, type RegisterPayload } from '@/api/auth'
+import { loginUser, registerUser, fetchProfile, updateProfile, type LoginPayload, type RegisterPayload, type UpdateProfilePayload } from '@/api/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('auth_token'))
@@ -53,10 +53,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function saveProfile(payload: UpdateProfilePayload) {
+    loading.value = true
+    try {
+      const res = await updateProfile(payload)
+      user.value = res.user
+      return res
+    } finally {
+      loading.value = false
+    }
+  }
+
   function logout() {
     setToken(null)
     user.value = null
   }
 
-  return { token, user, loading, isAuthenticated, login, register, loadProfile, logout }
+  return { token, user, loading, isAuthenticated, login, register, loadProfile, saveProfile, logout }
 })

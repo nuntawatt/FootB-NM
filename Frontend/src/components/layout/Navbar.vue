@@ -104,15 +104,22 @@
 
         <!-- Authenticated User -->
         <div v-if="authStore.isAuthenticated && authStore.user" class="hidden sm:flex items-center gap-2">
-          <img
-            :src="authStore.user.avatar_url"
-            :alt="authStore.user.username"
-            class="w-8 h-8 rounded-full object-cover border border-sport-red"
-          />
-          <span class="text-xs font-semibold max-w-[100px] truncate">{{ authStore.user.username }}</span>
+          <RouterLink
+            to="/profile"
+            class="flex items-center gap-2 px-2 py-1 rounded-lg transition-colors"
+            :class="isDark ? 'hover:bg-sport-card' : 'hover:bg-gray-100'"
+            title="ดูโปรไฟล์"
+          >
+            <img
+              :src="authStore.user.avatar_url"
+              :alt="authStore.user.username"
+              class="w-8 h-8 rounded-full object-cover border border-sport-red"
+            />
+            <span class="text-xs font-semibold max-w-[100px] truncate">{{ authStore.user.username }}</span>
+          </RouterLink>
           <button
             type="button"
-            @click="authStore.logout()"
+            @click="showLogoutModal = true"
             class="text-[11px] px-2 py-1 rounded border border-sport-border hover:border-sport-red hover:text-sport-red transition-colors"
           >
             ออก
@@ -187,16 +194,31 @@
           สมัครสมาชิก
         </RouterLink>
       </div>
-      <button
-        v-else
-        type="button"
-        @click="authStore.logout(); mobileMenuOpen = false"
-        class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-sport-red"
-      >
-        ออกจากระบบ ({{ authStore.user?.username }})
-      </button>
+      <div v-else class="pt-1 space-y-1">
+        <RouterLink
+          to="/profile"
+          @click="mobileMenuOpen = false"
+          class="block px-3 py-2 rounded-lg text-sm font-semibold"
+          :class="isDark ? 'text-neutral-200 hover:bg-sport-hover' : 'text-gray-800 hover:bg-gray-100'"
+        >
+          โปรไฟล์ ({{ authStore.user?.username }})
+        </RouterLink>
+        <button
+          type="button"
+          @click="showLogoutModal = true; mobileMenuOpen = false"
+          class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-sport-red"
+        >
+          ออกจากระบบ
+        </button>
+      </div>
     </div>
   </header>
+
+  <LogoutConfirmModal
+    :open="showLogoutModal"
+    @cancel="showLogoutModal = false"
+    @confirm="confirmLogout"
+  />
 </template>
 
 <script setup lang="ts">
@@ -207,6 +229,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 import { fetchTeams } from '@/api/teams'
 import type { Team } from '@/types'
+import LogoutConfirmModal from './LogoutConfirmModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -225,7 +248,14 @@ const navItems = [
 const searchQuery = ref('')
 const showResults = ref(false)
 const mobileMenuOpen = ref(false)
+const showLogoutModal = ref(false)
 const allTeams = ref<Team[]>([])
+
+function confirmLogout() {
+  showLogoutModal.value = false
+  authStore.logout()
+  router.push('/')
+}
 
 onMounted(async () => {
   await authStore.loadProfile()
