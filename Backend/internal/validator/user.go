@@ -10,7 +10,7 @@ import (
 
 var (
 	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-	usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,30}$`)
+	usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,10}$`)
 )
 
 type RegisterInput struct {
@@ -34,7 +34,7 @@ func (r *RegisterInput) Validate() error {
 		return errors.New("username is required")
 	}
 	if len(r.Username) < 3 || len(r.Username) > 30 {
-		return errors.New("username must be between 3 and 30 characters")
+		return errors.New("username must be between 3 and 10 characters")
 	}
 	if !usernameRegex.MatchString(r.Username) {
 		return errors.New("username can only contain letters, numbers, and underscores (no spaces or special characters)")

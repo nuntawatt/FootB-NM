@@ -29,7 +29,7 @@
 | | `GET` | `/teams/:id/form` | Public | ผลงาน 5 นัดล่าสุดของทีม (W/D/L) คำนวณจากผลแข่งจริง |
 | | `GET` | `/teams/:id/coach` | Public | ข้อมูลหัวหน้าผู้ฝึกสอน (Coach) รูปถ่าย สัญชาติ |
 | | `GET` | `/teams/:id/squad` | Public | รายชื่อผู้เล่นทุกคนในทีม ตำแหน่ง เบอร์เสื้อ รูปถ่าย |
-| **5. Matches** | `GET` | `/matches` | Public | ตารางแข่งและผลบอล (รองรับ filter: season, date, status) |
+| **5. Matches** | `GET` | `/matches` | Public | ตารางแข่งและผลบอล (รองรับ filter: year, season, team_id, group_by) |
 | | `GET` | `/matches/:id` | Public | รายละเอียดแมตช์เฉพาะคู่ตาม ID |
 | | `GET` | `/matches/:id/lineups` | Public | รายชื่อ 11 ตัวจริง แผนการเล่น (Formation) และตัวสำรอง |
 | | `GET` | `/matches/:id/venue` | Public | ข้อมูลสนามแข่งขัน ความจุ เมือง ช่องถ่ายทอดสด |
@@ -420,20 +420,57 @@ curl -i http://localhost:3000/api/v1/teams/e1c4d9dc-03a5-427c-b055-57d106c81928/
 ## 5. Matches (ตารางแข่งและผลบอล)
 
 ### GET /matches
-ดึงรายการแข่งขันและผลบอล พร้อมข้อมูลทีมเหย้า-เยือน โลโก้ สกอร์ นาที และสถานะ
+ดึงรายการแข่งขันและผลบอล พร้อมข้อมูลทีมเหย้า-เยือน โลโก้ สกอร์ นาที สถานะ และข้อมูลปี/ฤดูกาล
 
 * **Query Parameters (Optional):**
-  * `season`: กรองตามฤดูกาล (`2024`, `2023`, `2022`)
-  * `year`: กรองตามปีปฏิทินที่แข่ง (`2024`)
-  * `status`: กรองสถานะ (`finished`, `live`, `scheduled`)
+  * `year`: กรองตามปีปฏิทิน ค.ศ. ที่ลงแข่ง (`2022`, `2023`, `2024`, `2025`, `2026`)
+  * `season`: กรองตามฤดูกาลฟุตบอล เช่น `2024` หรือ `2024/2025`
+  * `team_id`: กรองเฉพาะแมตช์ที่ทีมนี้ลงแข่งขัน (ทั้งเหย้าและเยือน)
+  * `home_team_id` / `away_team_id`: กรองคู่แข่งขันเฉพาะเจาะจง
+  * `group_by`: จัดกลุ่มผลลัพธ์แยกตามปี (`year`) หรือแยกตามฤดูกาล (`season`)
+  * `status`: กรองสถานะ (`finished`, `live`, `scheduled`, `postponed`)
   * `league_id`: กรองเฉพาะลีกที่ระบุ (UUID)
   * `date`: กรองตามวันที่แข่ง รูปแบบ `YYYY-MM-DD`
-  * `limit`: จำนวนรายการต่อหน้า (default: 50, สูงสุด: 200)
+  * `limit`: จำนวนรายการต่อหน้า (default: 50, สูงสุด: 1000)
   * `page`: หน้าที่ต้องการดึง (default: 1)
 
-* **curl:**
+* **curl ตัวอย่างการกรองตามปี (2022 - 2026):**
 ```bash
-curl -i "http://localhost:3000/api/v1/matches?season=2024&limit=20"
+# 1. กรองแมตช์ที่แข่งในปี 2024
+curl -i "http://localhost:3000/api/v1/matches?year=2024&limit=10"
+
+# 2. กรองแมตช์ของทีมใดทีมหนึ่งในปี 2024
+curl -i "http://localhost:3000/api/v1/matches?year=2024&team_id=4508928c-d4bf-4978-9cc7-515ea59b83e6"
+
+# 3. จัดกลุ่มแมตช์แยกเป็นรายปีอัตโนมัติ
+curl -i "http://localhost:3000/api/v1/matches?group_by=year"
+```
+
+* **Response Example (รายแมตช์จะมีฟิลด์ year และ season ระบุชัดเจน):**
+```json
+[
+  {
+    "id": "404405b6-19bb-455c-a8ad-a5f023be01d5",
+    "year": 2025,
+    "season": "2024/2025",
+    "season_year": 2024,
+    "match_date": "2025-05-24T18:00:00+07:00",
+    "round": "Final",
+    "status": "finished",
+    "home_score": 2,
+    "away_score": 3,
+    "home_team": {
+      "id": "a1b5c773-e49f-410e-be26-f8b9ab1a968d",
+      "name": "Muangthong United",
+      "logo_url": "https://media.api-sports.io/football/teams/2786.png"
+    },
+    "away_team": {
+      "id": "4508928c-d4bf-4978-9cc7-515ea59b83e6",
+      "name": "Buriram United",
+      "logo_url": "https://media.api-sports.io/football/teams/2780.png"
+    }
+  }
+]
 ```
 
 ---

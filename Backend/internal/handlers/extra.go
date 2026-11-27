@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	cache "football/internal/redis"
@@ -135,6 +136,152 @@ func (h *ExtraHandler) TeamSquad(c fiber.Ctx) error {
 	return c.JSON(fallback)
 }
 
+// buildTeamLineup ดึงรายชื่อ 11 ตัวจริง โค้ช และตัวสำรองจากฐานข้อมูลจริง
+func (h *ExtraHandler) buildTeamLineup(teamID uuid.UUID, teamName string, defaultFormation string) models.LineupTeam {
+	// 1. ดึงข้อมูลโค้ชจริง
+	coachName := "Head Coach"
+	var coaches []models.Coach
+	if err := h.db.Where("team_id = ?", teamID).Limit(1).Find(&coaches).Error; err == nil && len(coaches) > 0 {
+		coachName = coaches[0].Name
+	}
+
+	// 2. ดึงนักเตะจริงของทีมเรียงตามเบอร์เสื้อ
+	var players []models.Player
+	_ = h.db.Where("team_id = ?", teamID).Order("number asc NULLS LAST").Find(&players).Error
+
+	if len(players) == 0 {
+		// Fallback ตัวอย่างหากทีมยังไม่มีข้อมูลนักเตะ
+		num1, num2, num4, num5, num3, num6, num8, num10, num7, num9, num11 := 1, 2, 4, 5, 3, 6, 8, 10, 7, 9, 11
+		return models.LineupTeam{
+			TeamID:    teamID,
+			TeamName:  teamName,
+			Formation: defaultFormation,
+			CoachName: coachName,
+			Starting: []models.LineupPlayer{
+				{Number: &num1, Name: "Goalkeeper", Position: "GK", Rating: "7.0"},
+				{Number: &num2, Name: "Right Back", Position: "DF", Rating: "6.9"},
+				{Number: &num4, Name: "Center Back", Position: "DF", Rating: "7.1"},
+				{Number: &num5, Name: "Center Back", Position: "DF", Rating: "7.0"},
+				{Number: &num3, Name: "Left Back", Position: "DF", Rating: "7.3"},
+				{Number: &num6, Name: "Defensive Mid", Position: "MF", Rating: "6.8"},
+				{Number: &num8, Name: "Central Mid", Position: "MF", Rating: "7.4"},
+				{Number: &num10, Name: "Attacking Mid", Position: "MF", Rating: "7.5"},
+				{Number: &num7, Name: "Right Wing", Position: "FW", Rating: "7.2"},
+				{Number: &num9, Name: "Striker", Position: "FW", Rating: "8.0"},
+				{Number: &num11, Name: "Left Wing", Position: "FW", Rating: "7.1"},
+			},
+			Subs: []models.LineupPlayer{},
+		}
+	}
+
+	// แยกนักเตะตามตำแหน่ง
+	var gks, dfs, mfs, fws, others []models.Player
+	for _, p := range players {
+		pos := strings.ToLower(p.Position)
+		switch {
+		case strings.Contains(pos, "goal") || strings.Contains(pos, "gk"):
+			gks = append(gks, p)
+		case strings.Contains(pos, "def") || strings.Contains(pos, "back") || strings.Contains(pos, "df"):
+			dfs = append(dfs, p)
+		case strings.Contains(pos, "mid") || strings.Contains(pos, "mf"):
+			mfs = append(mfs, p)
+		case strings.Contains(pos, "att") || strings.Contains(pos, "forw") || strings.Contains(pos, "wing") || strings.Contains(pos, "striker") || strings.Contains(pos, "fw"):
+			fws = append(fws, p)
+		default:
+			others = append(others, p)
+		}
+	}
+
+	var starting []models.LineupPlayer
+	usedIDs := make(map[uuid.UUID]bool)
+	ratings := []string{"7.0", "7.2", "6.9", "7.1", "7.3", "6.8", "7.4", "7.5", "7.2", "7.8", "7.1"}
+
+	addPlayer := func(p models.Player, posLabel string) {
+		rating := "7.0"
+		if len(starting) < len(ratings) {
+			rating = ratings[len(starting)]
+		}
+		starting = append(starting, models.LineupPlayer{
+			Number:   p.Number,
+			Name:     p.Name,
+			Position: posLabel,
+			Rating:   rating,
+		})
+		usedIDs[p.ID] = true
+	}
+
+	// 1. ผู้รักษาประตู 1 คน
+	if len(gks) > 0 {
+		addPlayer(gks[0], "GK")
+	}
+
+	// 2. กองหลัง 4 คน
+	for i := 0; i < len(dfs) && len(starting) < 5; i++ {
+		addPlayer(dfs[i], "DF")
+	}
+
+	// 3. กองกลาง 3 คน
+	for i := 0; i < len(mfs) && len(starting) < 8; i++ {
+		addPlayer(mfs[i], "MF")
+	}
+
+	// 4. กองหน้า 3 คน
+	for i := 0; i < len(fws) && len(starting) < 11; i++ {
+		addPlayer(fws[i], "FW")
+	}
+
+	// หากตำแหน่งใดไม่พอ ให้เติมจากนักเตะที่เหลือจนครบ 11 คน (ถ้ามีพอ)
+	allRemaining := append(append(append(append(gks, dfs...), mfs...), fws...), others...)
+	for _, p := range allRemaining {
+		if len(starting) >= 11 {
+			break
+		}
+		if !usedIDs[p.ID] {
+			posLabel := "MF"
+			pos := strings.ToLower(p.Position)
+			if strings.Contains(pos, "goal") || strings.Contains(pos, "gk") {
+				posLabel = "GK"
+			} else if strings.Contains(pos, "def") || strings.Contains(pos, "back") {
+				posLabel = "DF"
+			} else if strings.Contains(pos, "att") || strings.Contains(pos, "forw") {
+				posLabel = "FW"
+			}
+			addPlayer(p, posLabel)
+		}
+	}
+
+	// ผู้เล่นที่เหลือจัดเป็นตัวสำรอง (Substitutes)
+	var subs []models.LineupPlayer
+	for _, p := range allRemaining {
+		if !usedIDs[p.ID] {
+			posLabel := "MF"
+			pos := strings.ToLower(p.Position)
+			if strings.Contains(pos, "goal") || strings.Contains(pos, "gk") {
+				posLabel = "GK"
+			} else if strings.Contains(pos, "def") || strings.Contains(pos, "back") {
+				posLabel = "DF"
+			} else if strings.Contains(pos, "att") || strings.Contains(pos, "forw") {
+				posLabel = "FW"
+			}
+			subs = append(subs, models.LineupPlayer{
+				Number:   p.Number,
+				Name:     p.Name,
+				Position: posLabel,
+			})
+			usedIDs[p.ID] = true
+		}
+	}
+
+	return models.LineupTeam{
+		TeamID:    teamID,
+		TeamName:  teamName,
+		Formation: defaultFormation,
+		CoachName: coachName,
+		Starting:  starting,
+		Subs:      subs,
+	}
+}
+
 // MatchLineups คืนรายชื่อ 11 ตัวจริงของแมตช์
 func (h *ExtraHandler) MatchLineups(c fiber.Ctx) error {
 	matchID, err := uuid.Parse(c.Params("id"))
@@ -151,49 +298,10 @@ func (h *ExtraHandler) MatchLineups(c fiber.Ctx) error {
 	}
 	match := matches[0]
 
-	num1, num2, num4, num5, num3, num6, num8, num10, num7, num9, num11 := 1, 2, 4, 5, 3, 6, 8, 10, 7, 9, 11
 	lineups := models.MatchLineup{
 		MatchID: match.ID,
-		Home: models.LineupTeam{
-			TeamID:    match.HomeTeamID,
-			TeamName:  match.HomeTeam.Name,
-			Formation: "4-3-3",
-			CoachName: "Home Head Coach",
-			Starting: []models.LineupPlayer{
-				{Number: &num1, Name: "Goalkeeper", Position: "GK", Rating: "7.0"},
-				{Number: &num2, Name: "Right Back", Position: "DF", Rating: "6.9"},
-				{Number: &num4, Name: "Center Back", Position: "DF", Rating: "7.1"},
-				{Number: &num5, Name: "Center Back", Position: "DF", Rating: "7.0"},
-				{Number: &num3, Name: "Left Back", Position: "DF", Rating: "7.3"},
-				{Number: &num6, Name: "Defensive Mid", Position: "MF", Rating: "6.8"},
-				{Number: &num8, Name: "Central Mid", Position: "MF", Rating: "7.4"},
-				{Number: &num10, Name: "Attacking Mid", Position: "MF", Rating: "7.5"},
-				{Number: &num7, Name: "Right Wing", Position: "FW", Rating: "7.2"},
-				{Number: &num9, Name: "Striker", Position: "FW", Rating: "8.0"},
-				{Number: &num11, Name: "Left Wing", Position: "FW", Rating: "7.1"},
-			},
-			Subs: []models.LineupPlayer{},
-		},
-		Away: models.LineupTeam{
-			TeamID:    match.AwayTeamID,
-			TeamName:  match.AwayTeam.Name,
-			Formation: "4-2-3-1",
-			CoachName: "Away Head Coach",
-			Starting: []models.LineupPlayer{
-				{Number: &num1, Name: "Goalkeeper", Position: "GK", Rating: "6.8"},
-				{Number: &num2, Name: "Right Back", Position: "DF", Rating: "6.9"},
-				{Number: &num4, Name: "Center Back", Position: "DF", Rating: "7.0"},
-				{Number: &num5, Name: "Center Back", Position: "DF", Rating: "7.1"},
-				{Number: &num3, Name: "Left Back", Position: "DF", Rating: "6.7"},
-				{Number: &num6, Name: "Central Mid", Position: "MF", Rating: "7.0"},
-				{Number: &num8, Name: "Central Mid", Position: "MF", Rating: "7.2"},
-				{Number: &num7, Name: "Right Wing", Position: "FW", Rating: "6.9"},
-				{Number: &num10, Name: "Playmaker", Position: "MF", Rating: "7.6"},
-				{Number: &num11, Name: "Left Wing", Position: "FW", Rating: "7.0"},
-				{Number: &num9, Name: "Striker", Position: "FW", Rating: "7.4"},
-			},
-			Subs: []models.LineupPlayer{},
-		},
+		Home:    h.buildTeamLineup(match.HomeTeamID, match.HomeTeam.Name, "4-3-3"),
+		Away:    h.buildTeamLineup(match.AwayTeamID, match.AwayTeam.Name, "4-2-3-1"),
 	}
 	return c.JSON(lineups)
 }
