@@ -1,6 +1,6 @@
 <template>
   <div class="card overflow-hidden">
-    <div class="bg-white text-gray-900 px-4 py-3 text-center font-extrabold text-base border-b border-gray-200">
+    <div class="bg-dark px-4 py-3 text-center font-extrabold text-base border-b border-gray-200">
       รายชื่อนักเตะในทีม ({{ players.length }})
     </div>
 
