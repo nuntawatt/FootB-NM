@@ -30,9 +30,9 @@
         </RouterLink>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loading" class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-        กำลังโหลดข้อมูลการแข่งขัน...
+      <!-- Loading Skeleton -->
+      <div v-if="loading" class="card p-4 space-y-3">
+        <div v-for="i in 5" :key="i" class="skeleton h-12 w-full" />
       </div>
 
       <!-- Error -->

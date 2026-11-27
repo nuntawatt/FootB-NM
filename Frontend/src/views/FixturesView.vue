@@ -65,8 +65,8 @@
       </div>
 
       <!-- Content -->
-      <div v-if="loading" class="card p-8 text-center text-sm" :class="isDark ? 'text-neutral-400' : 'text-gray-500'">
-        กำลังโหลดโปรแกรมแข่งขัน...
+      <div v-if="loading" class="card p-4 space-y-3">
+        <div v-for="i in 6" :key="i" class="skeleton h-12 w-full" />
       </div>
 
       <div v-else-if="error" class="card p-6 text-center space-y-3">
