@@ -2,18 +2,24 @@ package handlers
 
 import (
 	"fmt"
+	"time"
 
+	cache "football/internal/redis"
 	"football/internal/models"
+	"football/internal/news"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-type ExtraHandler struct{ db *gorm.DB }
+type ExtraHandler struct {
+	db    *gorm.DB
+	cache *cache.Cache
+}
 
-func NewExtraHandler(db *gorm.DB) *ExtraHandler {
-	return &ExtraHandler{db: db}
+func NewExtraHandler(db *gorm.DB, cache *cache.Cache) *ExtraHandler {
+	return &ExtraHandler{db: db, cache: cache}
 }
 
 // TeamForm คืนผลงาน 5 นัดล่าสุดของทีมจากแมตช์จริงใน DB
@@ -217,34 +223,23 @@ func (h *ExtraHandler) MatchVenue(c fiber.Ctx) error {
 	return c.JSON(venue)
 }
 
-// Heroes คืนแบนเนอร์ข่าวเด่นหน้าแรก
+// Heroes คืนแบนเนอร์ข่าวเด่นและไฮไลท์ฟุตบอลจริง
 func (h *ExtraHandler) Heroes(c fiber.Ctx) error {
-	var nextMatches []models.Match
-	h.db.Where("status = 'scheduled'").Order("match_date asc").Limit(1).Find(&nextMatches)
+	cacheKey := "football:heroes:news"
+	var cachedHeroes []models.HeroHighlight
 
-	var matchID *uuid.UUID
-	if len(nextMatches) > 0 && nextMatches[0].ID != uuid.Nil {
-		matchID = &nextMatches[0].ID
+	// 1. อ่านจาก Redis ก่อนถ้ามี
+	if h.cache.Get(c.Context(), cacheKey, &cachedHeroes) && len(cachedHeroes) > 0 {
+		return c.JSON(cachedHeroes)
 	}
 
-	heroes := []models.HeroHighlight{
-		{
-			ID:          "hero-1",
-			Title:       "ศึกบิ๊กแมตช์ไทยลีก นัดหยุดโลกสุดสัปดาห์นี้!",
-			Subtitle:    "ติดตามการถ่ายทอดสดแบบ Real-time พร้อมผลการวิเคราะห์เจาะลึก",
-			ImageURL:    "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80",
-			Tag:         "BIG MATCH",
-			MatchID:     matchID,
-			RedirectURL: "/matches",
-		},
-		{
-			ID:          "hero-2",
-			Title:       "สรุปตารางคะแนนล่าสุด ใครเต็งแชมป์ประจำฤดูกาล?",
-			Subtitle:    "เจาะลึกฟอร์ม 5 นัดหลังสุดของหัวตาราง",
-			ImageURL:    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80",
-			Tag:         "ANALYSIS",
-			RedirectURL: "/standings",
-		},
+	// 2. ดึงข่าวจริงจากแหล่งข่าวฟุตบอลชั้นนำ (Khaosod Sports / Sky Sports)
+	items := news.FetchFootballHeroes(c.Context(), 5)
+	if len(items) > 0 {
+		// เซฟลง Redis แคชไว้ 30 นาที
+		h.cache.Set(c.Context(), cacheKey, items, 30*time.Minute)
+		return c.JSON(items)
 	}
-	return c.JSON(heroes)
+
+	return c.JSON(news.DefaultHeroes())
 }

@@ -86,7 +86,7 @@ func (h *UserHandler) Register(c fiber.Ctx) error {
 
 	avatar := in.AvatarURL
 	if avatar == "" {
-		avatar = "https://ui-avatars.com/api/?name=" + in.Username + "&background=0F172A&color=38BDF8&size=256"
+		avatar = "https://i.pinimg.com/1200x/81/8b/7e/818b7e92210d0afdbbb2f1f84247e1c4.jpg"
 	}
 
 	user := models.User{
