@@ -1,0 +1,8 @@
+.git
+.gitignore
+.env
+.agents
+api
+*.log
+tmp/
+.DS_Store
