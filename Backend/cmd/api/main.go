@@ -96,7 +96,7 @@ func registerRoutes(app *fiber.App, db *gorm.DB, cfg *config.Config, rCache *cac
 	api.Post("/login", users.Login)
 	api.Get("/profile", protected, users.Profile)
 
-	// Favorites (ทีมโปรด - ดึง user จาก JWT อัตโนมัติ หรือ fallback เป็น X-User-ID)
+	// Favorites
 	favorites := handlers.NewFavoriteHandler(db)
 	fav := api.Group("/favorites", optAuth)
 	fav.Get("/", favorites.List)

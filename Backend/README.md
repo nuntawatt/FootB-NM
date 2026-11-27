@@ -42,6 +42,7 @@ Content-Type: `application/json`
 * **username:** ต้องยาว 3-30 ตัวอักษร อนุญาตเฉพาะตัวอักษรภาษาอังกฤษ, ตัวเลข และขีดล่าง `_` (ห้ามมีช่องว่างหรืออักขระพิเศษ)
 * **email:** รูปแบบอีเมลมาตรฐาน ความยาวไม่เกิน 255 ตัวอักษร
 * **password:** ต้องยาว 6-72 ตัวอักษร และต้องมีทั้งตัวอักษรและตัวเลขผสมกันอย่างน้อยอย่างละ 1 ตัว
+* **confirm_password:** ต้องกรอก และต้องตรงกับ `password` ทุกตัวอักษร
 * **avatar_url:** (ไม่บังคับ) หากส่งมา ต้องเป็น URL ที่ขึ้นต้นด้วย `http://` หรือ `https://`
 
 ---
@@ -56,6 +57,7 @@ Content-Type: `application/json`
   "username": "somchai99",
   "email": "somchai99@example.com",
   "password": "Password123",
+  "confirm_password": "Password123",
   "avatar_url": ""
 }
 ```
@@ -63,7 +65,7 @@ Content-Type: `application/json`
 ```bash
 curl -i -X POST http://localhost:3000/api/v1/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"somchai99","email":"somchai99@example.com","password":"Password123"}'
+  -d '{"username":"somchai99","email":"somchai99@example.com","password":"Password123","confirm_password":"Password123"}'
 ```
 - **Response (201 Created):**
 ```json
